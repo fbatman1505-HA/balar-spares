@@ -1,0 +1,1445 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BALAR SPARES — Inventory Intelligence</title>
+<style>
+:root{
+  --cyan:#0593C6; --cyan-d:#036F96; --cyan-l:#9FD6EA; --cyan-xl:#DCEEF6;
+  --mag:#D83995; --mag-l:#F0A9CF;
+  --crit:#C62828; --warn:#C77A14; --ok:#0E8A74;
+  --surface:#FCFFFF; --bg:#EDF3F6; --panel:#F6FAFC;
+  --ink:#0E1D26; --ink-2:#44606D; --ink-3:#7794A2;
+  --line:#D2E2EA; --head:#0B1F29;
+  --r:10px; --sh:0 1px 2px rgba(11,31,41,.06), 0 4px 14px rgba(11,31,41,.05);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--ink);
+  font:14px/1.5 "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1180px; margin:0 auto; padding:0 16px 56px}
+
+/* ---------------------------------------------------------------- header */
+header{background:var(--head); color:#EAF6FB; padding:22px 0 0; margin-bottom:22px}
+header .wrap{padding-bottom:0}
+.brand{display:flex; align-items:flex-end; gap:14px; flex-wrap:wrap}
+.brand h1{margin:0; font-size:21px; letter-spacing:.2px; font-weight:650}
+.brand h1 span{color:var(--cyan-l); font-weight:400}
+.brand .meta{margin-left:auto; font-size:12px; color:#9FC2D2; text-align:right; line-height:1.7}
+.brand .meta b{color:#EAF6FB; font-weight:600}
+.tagline{margin:6px 0 16px; font-size:12.5px; color:#9FC2D2; max-width:760px}
+
+/* ---------------------------------------------------------------- tabs */
+.tabs{display:flex; gap:2px; flex-wrap:wrap; margin-bottom:-1px}
+.tab{
+  appearance:none; border:1px solid transparent; border-bottom:none; cursor:pointer;
+  background:rgba(255,255,255,.07); color:#BBD7E3; font:inherit; font-size:13px; font-weight:500;
+  padding:9px 15px; border-radius:8px 8px 0 0; display:flex; align-items:center; gap:7px;
+}
+.tab:hover{background:rgba(255,255,255,.14); color:#EAF6FB}
+.tab[aria-selected="true"]{background:var(--bg); color:var(--head); font-weight:650; border-color:var(--line)}
+.tab .pill{
+  font-size:10.5px; font-weight:700; padding:1px 6px; border-radius:9px; line-height:1.5;
+  background:rgba(255,255,255,.18); color:#EAF6FB;
+}
+.tab[aria-selected="true"] .pill{background:var(--cyan); color:#fff}
+.tab .pill.alert{background:var(--crit); color:#fff}
+.panel-body[hidden]{display:none}
+
+/* ---------------------------------------------------------------- cards */
+.card{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--sh); padding:16px 18px; margin-bottom:16px}
+.card > h2{margin:0 0 3px; font-size:14.5px; font-weight:650; letter-spacing:.1px}
+.card > .sub{margin:0 0 14px; font-size:12px; color:var(--ink-3)}
+.grid{display:grid; gap:16px}
+.g2{grid-template-columns:1fr 1fr}
+@media(max-width:820px){ .g2{grid-template-columns:1fr} }
+
+/* ---------------------------------------------------------------- kpi */
+.kpis{display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:16px}
+@media(max-width:820px){ .kpis{grid-template-columns:repeat(2,1fr)} }
+@media(max-width:520px){ .kpis{grid-template-columns:1fr} }
+.kpi{background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--cyan);
+     border-radius:var(--r); box-shadow:var(--sh); padding:13px 15px}
+.kpi.k-crit{border-left-color:var(--crit)} .kpi.k-warn{border-left-color:var(--warn)}
+.kpi.k-mag{border-left-color:var(--mag)}   .kpi.k-ok{border-left-color:var(--ok)}
+.kpi .lab{font-size:11px; text-transform:uppercase; letter-spacing:.7px; color:var(--ink-3); font-weight:600}
+.kpi .val{font-size:23px; font-weight:680; margin:3px 0 1px; font-variant-numeric:tabular-nums; letter-spacing:-.3px}
+.kpi .note{font-size:11.5px; color:var(--ink-2); background:none; border:none; padding:0; margin:0}
+
+/* ---------------------------------------------------------------- tables */
+.tblwrap{overflow-x:auto; margin:0 -18px -16px; padding:0 18px 2px}
+table{border-collapse:collapse; width:100%; font-size:12.5px}
+th,td{padding:7px 9px; text-align:left; border-bottom:1px solid var(--line); white-space:nowrap}
+th{font-size:10.5px; text-transform:uppercase; letter-spacing:.6px; color:var(--ink-3); font-weight:650;
+   background:var(--panel); position:sticky; top:0; cursor:pointer; user-select:none}
+th.nos{cursor:default}
+th:after{content:""; }
+th[data-dir="asc"]:after{content:" ▲"; color:var(--cyan)}
+th[data-dir="desc"]:after{content:" ▼"; color:var(--cyan)}
+td.num,th.num{text-align:right; font-variant-numeric:tabular-nums}
+tbody tr:hover{background:var(--cyan-xl)}
+td.nm{white-space:normal; min-width:190px}
+.sku{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:11.5px; color:var(--ink-2)}
+tfoot td{font-weight:650; border-top:2px solid var(--line); border-bottom:none; background:var(--panel)}
+
+/* ---------------------------------------------------------------- badges & chips */
+.badge{display:inline-block; font-size:10.5px; font-weight:700; padding:2px 7px; border-radius:4px;
+       letter-spacing:.3px; text-transform:uppercase}
+.b-crit{background:#FBE9E7; color:#8E1B1B; border:1px solid #F0C4BF}
+.b-warn{background:#FDF3E2; color:#7A4A05; border:1px solid #EFD9AE}
+.b-ok  {background:#E3F3EF; color:#0A5B4D; border:1px solid #B9DDD5}
+.b-mag {background:#FCE8F2; color:#8E1B5D; border:1px solid #F3C4DD}
+.b-neutral{background:var(--cyan-xl); color:var(--cyan-d); border:1px solid var(--cyan-l)}
+.chips{display:flex; gap:7px; flex-wrap:wrap; margin-bottom:12px}
+.chip{appearance:none; cursor:pointer; font:inherit; font-size:12px; padding:5px 11px; border-radius:16px;
+      border:1px solid var(--line); background:var(--surface); color:var(--ink-2)}
+.chip:hover{border-color:var(--cyan); color:var(--cyan-d)}
+.chip[aria-pressed="true"]{background:var(--cyan); border-color:var(--cyan); color:#fff; font-weight:600}
+.delta-up{color:var(--ok); font-weight:650} .delta-dn{color:var(--crit); font-weight:650}
+
+/* ---------------------------------------------------------------- forms */
+label{display:block; font-size:11px; text-transform:uppercase; letter-spacing:.6px;
+      color:var(--ink-3); font-weight:650; margin-bottom:4px}
+input,select,textarea,button{font:inherit}
+input[type=text],input[type=date],input[type=number],select,textarea{
+  width:100%; padding:7px 9px; border:1px solid var(--line); border-radius:7px;
+  background:var(--surface); color:var(--ink);
+}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--cyan-l); outline-offset:0; border-color:var(--cyan)}
+.formrow{display:grid; grid-template-columns:140px 1fr 110px 130px auto; gap:10px; align-items:end}
+@media(max-width:820px){ .formrow{grid-template-columns:1fr 1fr} }
+.btn{cursor:pointer; padding:8px 15px; border-radius:7px; border:1px solid var(--cyan);
+     background:var(--cyan); color:#fff; font-weight:600; font-size:13px; white-space:nowrap}
+.btn:hover{background:var(--cyan-d); border-color:var(--cyan-d)}
+.btn.sec{background:var(--surface); color:var(--cyan-d)}
+.btn.sec:hover{background:var(--cyan-xl)}
+.btn.danger{background:var(--surface); color:#8E1B1B; border-color:#F0C4BF}
+.btn.danger:hover{background:#FBE9E7}
+.btn.mini{padding:3px 9px; font-size:11.5px; font-weight:600}
+.btnrow{display:flex; gap:9px; flex-wrap:wrap; margin-top:4px}
+.search{max-width:280px}
+.drop{border:1.5px dashed var(--cyan-l); border-radius:var(--r); padding:20px; text-align:center;
+      color:var(--ink-2); background:var(--panel); cursor:pointer; font-size:13px}
+.drop:hover,.drop.over{background:var(--cyan-xl); border-color:var(--cyan)}
+.note{font-size:12px; color:var(--ink-2); background:var(--panel); border:1px solid var(--line);
+      border-radius:8px; padding:10px 12px; margin-top:12px}
+.note b{color:var(--ink)}
+.note.warn{background:#FDF3E2; border-color:#EFD9AE}
+.note.good{background:#E3F3EF; border-color:#B9DDD5}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:11.5px}
+.empty{padding:28px 10px; text-align:center; color:var(--ink-3); font-size:13px}
+
+/* ---------------------------------------------------------------- ask tab */
+.answer{border:1px solid var(--line); border-left:3px solid var(--cyan); border-radius:8px;
+        background:var(--panel); padding:13px 15px; margin-top:13px; font-size:13px}
+.answer h3{margin:0 0 7px; font-size:13.5px; font-weight:650}
+.answer table{font-size:12px; margin-top:9px}
+.answer .src{margin-top:10px; font-size:11px; color:var(--ink-3); border-top:1px solid var(--line); padding-top:7px}
+svg{display:block; max-width:100%; height:auto}
+footer{text-align:center; font-size:11.5px; color:var(--ink-3); padding:8px 16px 0}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="brand">
+      <h1>BALAR SPARES <span>· Inventory Intelligence</span></h1>
+      <div class="meta">
+        <div>Amazon India · automotive spare parts</div>
+        <div>Data window <b id="hdrWindow">—</b> · <b id="hdrDays">—</b> days</div>
+      </div>
+    </div>
+    <p class="tagline">
+      Reads the sales and stock history, then works out what to reorder before it runs out,
+      what is selling faster or slower than last month, and which stock has stopped moving.
+      Every figure is computed from the data below — nothing is estimated.
+    </p>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" id="t-overview" data-t="overview" aria-selected="true">Overview</button>
+      <button class="tab" role="tab" id="t-reorder"  data-t="reorder"  aria-selected="false">Reorder <span class="pill alert" id="pillReorder">0</span></button>
+      <button class="tab" role="tab" id="t-movers"   data-t="movers"   aria-selected="false">What's Selling</button>
+      <button class="tab" role="tab" id="t-dead"     data-t="dead"     aria-selected="false">Dead Stock <span class="pill" id="pillDead">0</span></button>
+      <button class="tab" role="tab" id="t-update"   data-t="update"   aria-selected="false">Update Data <span class="pill" id="pillUser">0</span></button>
+      <button class="tab" role="tab" id="t-ask"      data-t="ask"      aria-selected="false">Ask</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+<!-- ======================================================== OVERVIEW -->
+<section class="panel-body" id="p-overview" role="tabpanel" aria-labelledby="t-overview">
+  <div class="kpis" id="kpis"></div>
+  <div class="card">
+    <h2>Daily revenue</h2>
+    <p class="sub">Last 90 days across the whole catalogue, at selling price.</p>
+    <div id="chRevenue"></div>
+  </div>
+  <div class="grid g2">
+    <div class="card">
+      <h2>Revenue by category</h2>
+      <p class="sub">Whole data window, at selling price.</p>
+      <div id="chCategory"></div>
+    </div>
+    <div class="card">
+      <h2>Where the money is stuck</h2>
+      <p class="sub">Stock value on hand, split by how fast it is moving.</p>
+      <div id="chHealth"></div>
+      <div class="note" id="healthNote"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================== REORDER -->
+<section class="panel-body" id="p-reorder" role="tabpanel" aria-labelledby="t-reorder" hidden>
+  <div class="kpis" id="reorderKpis"></div>
+  <div class="card">
+    <h2>What to reorder</h2>
+    <p class="sub">
+      Days of cover = stock ÷ average daily sales over the last 30 days. A line is raised when
+      cover is shorter than the supplier lead time plus a 7-day buffer plus a 7-day warning window.
+      Suggested order quantity covers lead time + 7 days of buffer + the next 30 days.
+    </p>
+    <div class="chips" id="reorderChips"></div>
+    <input type="text" class="search" id="reorderSearch" placeholder="Filter by SKU, part or model…">
+    <div class="tblwrap"><table id="reorderTbl" data-empty="No part is running short on this filter."></table></div>
+    <div class="btnrow" style="margin-top:14px">
+      <button class="btn sec" id="dlReorder">Download purchase list (CSV)</button>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================== MOVERS -->
+<section class="panel-body" id="p-movers" role="tabpanel" aria-labelledby="t-movers" hidden>
+  <div class="grid g2">
+    <div class="card">
+      <h2>Top sellers, last 30 days</h2>
+      <p class="sub">Switch between units shifted and revenue earned — the two orders differ.</p>
+      <div class="chips" id="topChips"></div>
+      <div id="chTop"></div>
+    </div>
+    <div class="card">
+      <h2>Picking up and falling away</h2>
+      <p class="sub">Last 30 days against the 30 before that. Only parts that sold at least 15 units in the earlier period.</p>
+      <div id="chTrend"></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Every part, last 30 days</h2>
+    <p class="sub">Sortable. Click a column heading to reorder.</p>
+    <div class="chips" id="catChips"></div>
+    <input type="text" class="search" id="moversSearch" placeholder="Filter by SKU, part or model…">
+    <div class="tblwrap"><table id="moversTbl" data-empty="No part matches this filter."></table></div>
+    <div class="btnrow" style="margin-top:14px">
+      <button class="btn sec" id="dlMovers">Download this table (CSV)</button>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================== DEAD STOCK -->
+<section class="panel-body" id="p-dead" role="tabpanel" aria-labelledby="t-dead" hidden>
+  <div class="kpis" id="deadKpis"></div>
+  <div class="card">
+    <h2>Capital tied up in dead stock</h2>
+    <p class="sub">Largest ten by money at cost. Dead = no sale for 60 days or more with stock still on the shelf.</p>
+    <div id="chDead"></div>
+  </div>
+  <div class="card">
+    <h2>Stock that has stopped moving</h2>
+    <p class="sub">Sorted by money tied up. These are the candidates for a discount, a bundle or a write-off.</p>
+    <div class="tblwrap"><table id="deadTbl" data-empty="Nothing has gone 60 days without a sale."></table></div>
+    <div class="btnrow" style="margin-top:14px">
+      <button class="btn sec" id="dlDead">Download dead-stock list (CSV)</button>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Ran out of stock in the last 30 days</h2>
+    <p class="sub">Days at zero stock. Every one of these is a day the listing could not sell.</p>
+    <div class="tblwrap"><table id="soTbl" data-empty="No part ran out of stock in the last 30 days."></table></div>
+  </div>
+</section>
+
+<!-- ======================================================== UPDATE DATA -->
+<section class="panel-body" id="p-update" role="tabpanel" aria-labelledby="t-update" hidden>
+  <div class="card">
+    <h2>Add a day's figures</h2>
+    <p class="sub">
+      One row per part per day. Leave closing stock blank and it is worked out from the day before
+      minus what sold. Entering a date that already exists replaces that day rather than adding to it.
+    </p>
+    <div class="formrow">
+      <div><label for="fDate">Date</label><input type="date" id="fDate"></div>
+      <div><label for="fSku">Part</label><select id="fSku"></select></div>
+      <div><label for="fUnits">Units sold</label><input type="number" id="fUnits" min="0" step="1" value="0"></div>
+      <div><label for="fStock">Closing stock</label><input type="number" id="fStock" min="0" step="1" placeholder="optional"></div>
+      <div><button class="btn" id="fAdd">Add row</button></div>
+    </div>
+    <div class="note" id="formNote" hidden></div>
+  </div>
+
+  <div class="card">
+    <h2>Or upload a day's file</h2>
+    <p class="sub">A CSV with the columns <span class="mono">date, sku, units_sold, closing_stock</span>. Closing stock may be left empty.</p>
+    <div class="drop" id="drop">
+      Click to choose a CSV, or drag one here
+      <input type="file" id="file" accept=".csv,text/csv" hidden>
+    </div>
+    <div class="note" id="uploadNote" hidden></div>
+  </div>
+
+  <div class="card">
+    <h2>Rows you have added</h2>
+    <p class="sub">Held in this browser, so they survive closing the page. Export them to keep a copy or to move them to another computer.</p>
+    <div class="tblwrap"><table id="userTbl" data-empty="You have not added any rows yet. The figures above use the supplied history."></table></div>
+    <div class="btnrow" style="margin-top:14px">
+      <button class="btn sec" id="dlUser">Export my rows (CSV)</button>
+      <button class="btn sec" id="importBtn">Import rows (CSV)</button>
+      <input type="file" id="importFile" accept=".csv,text/csv" hidden>
+      <button class="btn danger" id="resetUser">Clear all my rows</button>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================== ASK -->
+<section class="panel-body" id="p-ask" role="tabpanel" aria-labelledby="t-ask" hidden>
+  <div class="card">
+    <h2>Ask about the stock</h2>
+    <p class="sub">
+      Type a question in plain English. This box matches your wording against the questions the tool
+      knows how to answer, then reads the answer off the figures above — so the numbers in the reply
+      are the same numbers in the tables, never a guess.
+    </p>
+    <div style="display:flex; gap:9px; flex-wrap:wrap">
+      <input type="text" id="q" placeholder="e.g. what should I reorder first?" style="flex:1; min-width:240px">
+      <button class="btn" id="qGo">Ask</button>
+    </div>
+    <div class="chips" style="margin-top:12px" id="qChips"></div>
+    <div id="qOut"></div>
+  </div>
+</section>
+
+<footer>
+  BALAR SPARES inventory tool · figures recomputed in your browser each time the page loads ·
+  demonstration dataset, not live Amazon data
+</footer>
+</div>
+
+<script>/* BALAR SPARES — inventory analytics engine.
+   Every number the dashboard shows is computed here. Nothing is estimated and
+   nothing is guessed: the same arithmetic runs on the seed history and on any
+   days the user appends afterwards, so the figures stay reproducible.        */
+const ANALYTICS = {
+  SAFETY: 7,      // days of buffer stock to hold beyond the lead time
+  REVIEW: 30,     // how far ahead an order is meant to cover
+  DEAD_DAYS: 60,  // no sale for this long, with stock on hand, counts as dead
+  WARN: 7,        // "Soon" window: will reach the reorder point within a week
+
+  /* Merge the embedded seed history with rows the user has entered or uploaded.
+     A user row replaces the seed row for that SKU and date. Dates with no row
+     are treated as a zero-sales day carrying the previous closing stock, and a
+     row whose closing stock was left blank has it derived from the day before. */
+  build(seed, userRows){
+    const bySku = {};
+    seed.cat.forEach((c, k) => {
+      const m = {};
+      seed.dates.forEach((d, t) => { m[d] = [seed.mov[k][2*t], seed.mov[k][2*t+1]]; });
+      bySku[c.s] = m;
+    });
+    const extra = [];
+    (userRows || []).forEach(r => {
+      if(!bySku[r.sku]) return;                       // unknown SKU: ignored, reported separately
+      bySku[r.sku][r.date] = [Number(r.units) || 0,
+                              (r.stock === null || r.stock === undefined || r.stock === "")
+                                ? null : Number(r.stock)];
+      extra.push(r.date);
+    });
+    const dates = [...new Set(seed.dates.concat(extra))].sort();
+    seed.cat.forEach(c => {
+      const m = bySku[c.s];
+      let last = 0;
+      dates.forEach(d => {
+        if(!(d in m)) m[d] = [0, last];
+        if(m[d][1] === null) m[d][1] = Math.max(0, last - m[d][0]);
+        last = m[d][1];
+      });
+    });
+    return { dates, cat: seed.cat, bySku };
+  },
+
+  metrics(D){
+    const { dates, cat, bySku } = D, T = dates.length;
+    const win = n => dates.slice(Math.max(0, T - n));
+    const w7 = win(7), w30 = win(30), w90 = win(90),
+          wPrev30 = dates.slice(Math.max(0, T - 60), Math.max(0, T - 30));
+
+    return cat.map(c => {
+      const m = bySku[c.s];
+      const sum = ds => ds.reduce((s, d) => s + (m[d] ? m[d][0] : 0), 0);
+      const stock  = m[dates[T-1]][1];
+      const u7 = sum(w7), u30 = sum(w30), u90 = sum(w90), prev30 = sum(wPrev30);
+      const v30 = u30 / Math.max(1, w30.length);
+      const cover = v30 > 0 ? stock / v30 : null;
+      const rop   = v30 * (c.l + this.SAFETY);
+      const order = v30 > 0 ? Math.max(0, Math.round(v30 * (c.l + this.SAFETY + this.REVIEW) - stock)) : 0;
+
+      let daysSince = T;
+      for(let i = T - 1; i >= 0; i--){ if(m[dates[i]][0] > 0){ daysSince = T - 1 - i; break; } }
+      const dead = daysSince >= this.DEAD_DAYS && stock > 0;
+
+      let urg = null;
+      if(v30 > 0 && cover !== null && cover < c.l + this.SAFETY + this.WARN){
+        urg = cover < c.l ? "Critical" : (cover < c.l + this.SAFETY ? "Urgent" : "Soon");
+      }
+      const trend = prev30 > 0 ? (u30 - prev30) / prev30 * 100 : null;
+      const unitsAll = dates.reduce((s, d) => s + m[d][0], 0);
+
+      return { sku:c.s, name:c.n, cat:c.c, price:c.p, cost:c.k, lead:c.l,
+               stock, u7, u30, u90, prev30, v30, cover, rop, order,
+               days_since:daysSince, dead, urg, trend,
+               tied: stock * c.k, units_all: unitsAll, rev_all: unitsAll * c.p,
+               stockout_days: w30.filter(d => m[d][1] === 0).length };
+    });
+  },
+
+  /* Headline figures, each one a sum over the per-SKU metrics above. */
+  summary(M){
+    const re_ = M.filter(m => m.urg), dead = M.filter(m => m.dead);
+    const tier = t => re_.filter(m => m.urg === t).length;
+    return {
+      skus: M.length,
+      units_sold: M.reduce((s,m)=>s+m.units_all, 0),
+      revenue: M.reduce((s,m)=>s+m.rev_all, 0),
+      inventory_at_cost: M.reduce((s,m)=>s+m.tied, 0),
+      units_in_stock: M.reduce((s,m)=>s+m.stock, 0),
+      sold_30d: M.filter(m=>m.u30 > 0).length,
+      no_sale_30d: M.filter(m=>m.u30 === 0).length,
+      reorder_count: re_.length,
+      critical: tier("Critical"), urgent: tier("Urgent"), soon: tier("Soon"),
+      order_value: re_.reduce((s,m)=>s+m.order*m.cost, 0),
+      dead_count: dead.length,
+      dead_tied: dead.reduce((s,m)=>s+m.tied, 0),
+      stockouts_30d: M.filter(m=>m.stockout_days > 0).length,
+    };
+  },
+
+  ORDER: { Critical:0, Urgent:1, Soon:2 },
+  reorderList(M){
+    return M.filter(m=>m.urg).sort((a,b)=> this.ORDER[a.urg]-this.ORDER[b.urg] || a.cover-b.cover);
+  },
+  deadList(M){ return M.filter(m=>m.dead).sort((a,b)=> b.tied-a.tied); },
+  topList(M, n){ return [...M].sort((a,b)=> b.u30-a.u30).slice(0, n||10); },
+  trendList(M, dir, min){
+    const t = M.filter(m => m.prev30 >= (min===undefined?15:min) && m.trend !== null);
+    return t.sort((a,b)=> dir === "up" ? b.trend-a.trend : a.trend-b.trend);
+  },
+  categoryRevenue(M){
+    const r = {};
+    M.forEach(m => { r[m.cat] = (r[m.cat]||0) + m.rev_all; });
+    return Object.entries(r).sort((a,b)=> b[1]-a[1]);
+  },
+  /* Daily revenue across the whole catalogue, for the trend chart. */
+  dailyRevenue(D, M, n){
+    const { dates, cat, bySku } = D;
+    const price = {}; cat.forEach(c => price[c.s] = c.p);
+    return dates.slice(Math.max(0, dates.length-(n||90))).map(d => ({
+      date: d,
+      value: cat.reduce((s,c)=> s + (bySku[c.s][d] ? bySku[c.s][d][0]*price[c.s] : 0), 0)
+    }));
+  },
+};
+if (typeof module !== "undefined") module.exports = ANALYTICS;
+</script>
+<script>const SEED = {"dates":["2026-07-08","2026-07-09","2026-07-10","2026-07-11","2026-07-12","2026-07-13","2026-07-14","2026-07-15","2026-07-16","2026-07-17","2026-07-18","2026-07-19","2026-07-20","2026-07-21","2026-07-22","2026-07-23","2026-07-24","2026-07-25","2026-07-26","2026-07-27","2026-07-28","2026-07-29","2026-07-30","2026-07-31","2026-08-01","2026-08-02","2026-08-03","2026-08-04","2026-08-05","2026-08-06","2026-08-07","2026-08-08","2026-08-09","2026-08-10","2026-08-11","2026-08-12","2026-08-13","2026-08-14","2026-08-15","2026-08-16","2026-08-17","2026-08-18","2026-08-19","2026-08-20","2026-08-21","2026-08-22","2026-08-23","2026-08-24","2026-08-25","2026-08-26","2026-08-27","2026-08-28","2026-08-29","2026-08-30","2026-08-31","2026-09-01","2026-09-02","2026-09-03","2026-09-04","2026-09-05","2026-09-06","2026-09-07","2026-09-08","2026-09-09","2026-09-10","2026-09-11","2026-09-12","2026-09-13","2026-09-14","2026-09-15","2026-09-16","2026-09-17","2026-09-18","2026-09-19","2026-09-20","2026-09-21","2026-09-22","2026-09-23","2026-09-24","2026-09-25","2026-09-26","2026-09-27","2026-09-28","2026-09-29","2026-09-30","2026-10-01","2026-10-02","2026-10-03","2026-10-04","2026-10-05","2026-10-06","2026-10-07","2026-10-08","2026-10-09","2026-10-10","2026-10-11","2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19","2026-10-20","2026-10-21","2026-10-22","2026-10-23","2026-10-24","2026-10-25","2026-10-26","2026-10-27","2026-10-28","2026-10-29","2026-10-30","2026-10-31","2026-11-01","2026-11-02","2026-11-03","2026-11-04"],"cat":[{"s":"BLR-1000","n":"Brake Pad Set \u2014 i10 Grand","c":"Brakes","p":1255,"k":825,"l":21},{"s":"BLR-1001","n":"Brake Disc Rotor \u2014 Santro","c":"Brakes","p":3295,"k":2085,"l":18},{"s":"BLR-1002","n":"Brake Shoe Set \u2014 Scorpio","c":"Brakes","p":795,"k":480,"l":7},{"s":"BLR-1003","n":"Brake Caliper Kit \u2014 XUV300","c":"Brakes","p":4085,"k":2465,"l":10},{"s":"BLR-1004","n":"Master Cylinder Kit \u2014 Alto 800","c":"Brakes","p":1805,"k":1115,"l":14},{"s":"BLR-1005","n":"Oil Filter \u2014 Kwid","c":"Filters","p":325,"k":205,"l":14},{"s":"BLR-1006","n":"Air Filter \u2014 Kwid","c":"Filters","p":510,"k":380,"l":21},{"s":"BLR-1007","n":"Cabin AC Filter \u2014 Swift","c":"Filters","p":570,"k":395,"l":10},{"s":"BLR-1008","n":"Fuel Filter \u2014 Venue","c":"Filters","p":520,"k":345,"l":14},{"s":"BLR-1009","n":"Diesel Water Separator \u2014 Alto 800","c":"Filters","p":1045,"k":795,"l":14},{"s":"BLR-1010","n":"Headlamp Assembly \u2014 i20","c":"Lighting","p":5580,"k":3630,"l":21},{"s":"BLR-1011","n":"Tail Lamp Unit \u2014 Swift","c":"Lighting","p":2640,"k":1690,"l":14},{"s":"BLR-1012","n":"Fog Lamp Kit \u2014 WagonR","c":"Lighting","p":2400,"k":1510,"l":14},{"s":"BLR-1013","n":"LED Indicator Set \u2014 Tiago","c":"Lighting","p":625,"k":440,"l":18},{"s":"BLR-1014","n":"Number Plate Lamp \u2014 Dzire","c":"Lighting","p":220,"k":160,"l":10},{"s":"BLR-1015","n":"Ignition Coil \u2014 Scorpio","c":"Electricals","p":1400,"k":940,"l":21},{"s":"BLR-1016","n":"Spark Plug Set \u2014 i10 Grand","c":"Electricals","p":810,"k":555,"l":7},{"s":"BLR-1017","n":"Starter Motor Brush \u2014 Punch","c":"Electricals","p":315,"k":210,"l":10},{"s":"BLR-1018","n":"Alternator Belt \u2014 i10 Grand","c":"Electricals","p":800,"k":520,"l":10},{"s":"BLR-1019","n":"Horn Set \u2014 Amaze","c":"Electricals","p":740,"k":545,"l":21},{"s":"BLR-1020","n":"Shock Absorber \u2014 Creta","c":"Suspension","p":2365,"k":1535,"l":18},{"s":"BLR-1021","n":"Coil Spring \u2014 Venue","c":"Suspension","p":2540,"k":1690,"l":7},{"s":"BLR-1022","n":"Leaf Spring Bush \u2014 Baleno","c":"Suspension","p":265,"k":175,"l":5},{"s":"BLR-1023","n":"Ball Joint \u2014 Kwid","c":"Suspension","p":705,"k":500,"l":10},{"s":"BLR-1024","n":"Tie Rod End \u2014 Tiago","c":"Suspension","p":645,"k":485,"l":5},{"s":"BLR-1025","n":"Timing Belt Kit \u2014 Alto 800","c":"Engine","p":3425,"k":2395,"l":10},{"s":"BLR-1026","n":"Water Pump \u2014 Kwid","c":"Engine","p":2020,"k":1540,"l":14},{"s":"BLR-1027","n":"Radiator Hose Set \u2014 Ertiga","c":"Engine","p":830,"k":525,"l":14},{"s":"BLR-1028","n":"Cylinder Head Gasket \u2014 WagonR","c":"Engine","p":1585,"k":1230,"l":10},{"s":"BLR-1029","n":"Engine Mount \u2014 Bolero","c":"Engine","p":1115,"k":815,"l":18},{"s":"BLR-1030","n":"Side Mirror Assembly \u2014 Bolero","c":"Body","p":1665,"k":1130,"l":10},{"s":"BLR-1031","n":"Door Handle Set \u2014 Swift","c":"Body","p":670,"k":485,"l":14},{"s":"BLR-1032","n":"Bumper Grille \u2014 Swift","c":"Body","p":1950,"k":1485,"l":14},{"s":"BLR-1033","n":"Wiper Blade Pair \u2014 Ertiga","c":"Body","p":580,"k":390,"l":10},{"s":"BLR-1034","n":"Mud Flap Set \u2014 WagonR","c":"Body","p":490,"k":365,"l":18},{"s":"BLR-1035","n":"Engine Oil 3.5L \u2014 XUV300","c":"Lubricants","p":2105,"k":1445,"l":14},{"s":"BLR-1036","n":"Gear Oil 1L \u2014 Dzire","c":"Lubricants","p":490,"k":335,"l":7},{"s":"BLR-1037","n":"Brake Fluid DOT4 \u2014 Creta","c":"Lubricants","p":315,"k":215,"l":10},{"s":"BLR-1038","n":"Coolant 1L \u2014 Alto 800","c":"Lubricants","p":275,"k":170,"l":7},{"s":"BLR-1039","n":"Grease Cartridge \u2014 Swift","c":"Lubricants","p":225,"k":140,"l":10},{"s":"BLR-1040","n":"Wheel Bearing Kit \u2014 Scorpio","c":"Bearings","p":1520,"k":930,"l":14},{"s":"BLR-1041","n":"Clutch Release Bearing \u2014 Baleno","c":"Bearings","p":1045,"k":665,"l":21},{"s":"BLR-1042","n":"Hub Assembly \u2014 Baleno","c":"Bearings","p":3395,"k":2640,"l":14},{"s":"BLR-1043","n":"Pulley Bearing \u2014 Punch","c":"Bearings","p":700,"k":460,"l":5},{"s":"BLR-1044","n":"Idler Bearing \u2014 Alto 800","c":"Bearings","p":515,"k":385,"l":18},{"s":"BLR-1045","n":"Car Cover \u2014 Alto 800","c":"Accessories","p":1300,"k":805,"l":5},{"s":"BLR-1046","n":"Seat Cover Set \u2014 WagonR","c":"Accessories","p":2345,"k":1630,"l":10},{"s":"BLR-1047","n":"Floor Mat Set \u2014 Celerio","c":"Accessories","p":1175,"k":905,"l":18},{"s":"BLR-1048","n":"Steering Cover \u2014 Tiago","c":"Accessories","p":370,"k":230,"l":14},{"s":"BLR-1049","n":"Dashboard Polish \u2014 Celerio","c":"Accessories","p":255,"k":175,"l":5},{"s":"BLR-1050","n":"Floor Mat Set \u2014 Ertiga","c":"Accessories","p":980,"k":600,"l":10},{"s":"BLR-1051","n":"Wheel Bearing Kit \u2014 Swift","c":"Bearings","p":1515,"k":1165,"l":5},{"s":"BLR-1052","n":"LED Indicator Set \u2014 i10 Grand","c":"Lighting","p":680,"k":510,"l":14},{"s":"BLR-1053","n":"Shock Absorber \u2014 XUV300","c":"Suspension","p":1970,"k":1450,"l":18},{"s":"BLR-1054","n":"Ball Joint \u2014 Ertiga","c":"Suspension","p":795,"k":525,"l":7},{"s":"BLR-1055","n":"Door Handle Set \u2014 Alto 800","c":"Body","p":815,"k":610,"l":18},{"s":"BLR-1056","n":"Brake Fluid DOT4 \u2014 i20","c":"Lubricants","p":295,"k":205,"l":21},{"s":"BLR-1057","n":"Brake Disc Rotor \u2014 Dzire","c":"Brakes","p":3185,"k":2150,"l":10},{"s":"BLR-1058","n":"Number Plate Lamp \u2014 Dzire","c":"Lighting","p":255,"k":195,"l":18},{"s":"BLR-1059","n":"Tie Rod End \u2014 XUV300","c":"Suspension","p":660,"k":410,"l":21},{"s":"BLR-1060","n":"Brake Pad Set \u2014 Bolero","c":"Brakes","p":1145,"k":810,"l":7},{"s":"BLR-1061","n":"Mud Flap Set \u2014 Santro","c":"Body","p":405,"k":275,"l":7},{"s":"BLR-1062","n":"Pulley Bearing \u2014 i20","c":"Bearings","p":705,"k":470,"l":21},{"s":"BLR-1063","n":"Master Cylinder Kit \u2014 Amaze","c":"Brakes","p":1475,"k":1145,"l":14},{"s":"BLR-1064","n":"Engine Mount \u2014 i10 Grand","c":"Engine","p":1260,"k":850,"l":14},{"s":"BLR-1065","n":"Steering Cover \u2014 Ertiga","c":"Accessories","p":410,"k":300,"l":7},{"s":"BLR-1066","n":"Hub Assembly \u2014 Alto 800","c":"Bearings","p":2985,"k":2155,"l":18},{"s":"BLR-1067","n":"Cylinder Head Gasket \u2014 Swift","c":"Engine","p":1685,"k":1030,"l":7},{"s":"BLR-1068","n":"Headlamp Assembly \u2014 i20","c":"Lighting","p":5880,"k":3735,"l":21},{"s":"BLR-1069","n":"Radiator Hose Set \u2014 WagonR","c":"Engine","p":1015,"k":715,"l":10},{"s":"BLR-1070","n":"Starter Motor Brush \u2014 Punch","c":"Electricals","p":310,"k":190,"l":10},{"s":"BLR-1071","n":"Ignition Coil \u2014 i10 Grand","c":"Electricals","p":1370,"k":960,"l":10},{"s":"BLR-1072","n":"Leaf Spring Bush \u2014 Bolero","c":"Suspension","p":315,"k":225,"l":14},{"s":"BLR-1073","n":"Cabin AC Filter \u2014 Punch","c":"Filters","p":525,"k":400,"l":7},{"s":"BLR-1074","n":"Brake Caliper Kit \u2014 Tiago","c":"Brakes","p":4205,"k":3245,"l":10},{"s":"BLR-1075","n":"Coolant 1L \u2014 WagonR","c":"Lubricants","p":305,"k":225,"l":14},{"s":"BLR-1076","n":"Diesel Water Separator \u2014 Bolero","c":"Filters","p":1040,"k":785,"l":10},{"s":"BLR-1077","n":"Side Mirror Assembly \u2014 Ertiga","c":"Body","p":1660,"k":1290,"l":14},{"s":"BLR-1078","n":"Car Cover \u2014 Bolero","c":"Accessories","p":1190,"k":760,"l":10},{"s":"BLR-1079","n":"Air Filter \u2014 Punch","c":"Filters","p":500,"k":320,"l":18}],"mov":[[0,12,0,12,0,12,0,12,1,11,0,11,0,11,0,11,1,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,1,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,1,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,1,7,0,7,0,7,1,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6],[0,12,0,12,0,12,0,12,0,12,0,12,0,12,1,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,1,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,1,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,1,8,0,8,0,8,1,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,1,6,0,6,0,6,0,6,0,6,0,6,1,5,0,5,0,5,1,4,0,4,0,4,0,4,0,4,0,4,0,4,0,4,0,4,0,4,0,4,0,4,0,4,0,4,0,4,0,4,0,4,1,3,0,3,0,3,0,3,0,3,0,3,0,3,0,3,1,2,0,2,0,2,0,2,0,2,0,2,1,1,0,1,0,1,0,1,0,13,0,13,0,13,1,12,0,12,0,12],[0,12,0,12,0,12,0,12,0,12,2,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,1,9,0,9,1,8,0,8,0,8,0,8,1,7,0,7,1,6,0,6,0,6,1,5,0,5,0,5,1,4,0,4,0,4,1,3,0,19,0,19,0,19,0,19,0,19,0,19,1,18,0,18,0,18,0,18,0,18,1,17,0,17,1,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,1,15,0,15,0,15,0,15,0,15,0,15,0,15,0,15,0,15,0,15,0,15,0,15,0,15,0,15,0,15,0,15,0,15,0,15,0,15,0,15,1,14,0,14,0,14,0,14,0,14,0,14,0,14,1,13,0,13,0,13,0,13,0,13,2,11,0,11,0,11,0,11,1,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,1,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,2,7,1,6,0,6,0,6,0,6,1,5,0,5,0,5,0,5,1,4,0,4,1,3,0,3],[1,63,1,62,2,60,3,57,3,54,2,52,2,50,1,49,0,49,1,48,1,47,2,45,2,43,1,42,1,41,3,38,3,35,3,32,0,32,1,31,3,28,2,26,3,23,1,22,0,22,1,21,0,112,1,111,2,109,1,108,3,105,0,105,3,102,2,100,0,100,1,99,1,98,0,98,6,92,2,90,1,89,1,88,2,86,0,86,6,80,0,80,2,78,1,77,0,77,0,77,1,76,0,76,0,76,1,75,0,75,2,73,2,71,1,70,4,66,2,64,3,61,0,61,3,58,2,56,1,55,0,55,4,51,3,48,1,47,5,42,0,42,3,39,2,37,2,35,0,35,2,33,2,31,2,29,1,28,0,28,1,27,2,25,0,125,2,123,0,123,0,123,0,123,1,122,2,120,1,119,2,117,0,117,0,117,0,117,2,115,3,112,2,110,0,110,1,109,0,109,0,109,1,108,3,105,1,104,0,104,1,103,1,102,0,102,3,99,1,98,0,98,0,98,1,97,2,95,1,94,2,92,2,90,2,88,4,84,2,82],[1,11,0,11,0,11,0,11,0,11,2,9,0,9,0,9,1,8,0,8,1,7,1,6,1,5,1,4,0,49,1,48,0,48,2,46,2,44,0,44,1,43,1,42,0,42,0,42,4,38,1,37,2,35,0,35,0,35,0,35,1,34,2,32,1,31,2,29,1,28,0,28,0,28,0,28,0,28,0,28,0,28,0,28,0,28,1,27,1,26,0,26,1,25,0,25,0,70,2,68,2,66,1,65,1,64,1,63,0,63,1,62,0,62,3,59,0,59,2,57,1,56,3,53,0,53,0,53,0,53,1,52,2,50,0,50,1,49,1,48,5,43,1,42,1,41,1,40,0,40,0,40,3,37,1,36,1,35,0,35,1,34,2,32,0,32,1,31,0,31,0,31,0,31,2,29,1,28,1,27,0,27,0,27,2,25,1,24,0,24,0,75,2,73,2,71,0,71,2,69,2,67,0,67,1,66,2,64,3,61,1,60,2,58,1,57,1,56,0,56,2,54,0,54,0,54,1,53,1,52,0,52,1,51,1,50,3,47,0,47],[0,12,0,12,0,12,0,12,1,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,1,10,1,9,0,9,1,8,1,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,1,18,0,18,0,18,0,18,0,18,1,17,0,17,0,17,0,17,0,17,0,17,0,17,0,17,0,17,0,17,0,17,0,17,0,17,0,17,0,17,0,17,0,17,0,17,1,16,0,16,0,16,0,16,0,16,1,15,0,15,0,15,0,15,0,15,0,15,0,15,0,15,0,15,0,15,0,15,0,15,1,14,0,14,1,13,0,13,0,13,0,13,0,13,0,13,0,13,0,13,0,13,0,13,0,13,1,12,0,12,0,12,0,12,0,12,0,12,1,11,0,11,0,11,0,11,0,11,1,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,1,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9],[0,12,0,12,0,12,0,12,1,11,0,11,0,11,0,11,0,11,1,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,2,8,0,8,0,8,1,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,1,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,18,0,18,0,18,0,18,0,18,0,18,0,18,0,18,1,17,1,16,0,16,0,16,0,16,1,15,0,15,0,15,0,15,0,15,0,15,0,15,1,14,0,14,0,14,0,14,0,14,0,14,0,14,1,13,0,13,0,13,0,13,0,13,1,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,1,11,0,11,0,11,0,11,0,11,0,11,1,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,1,9,0,9,0,9],[1,11,1,10,0,10,0,10,1,9,0,9,1,8,1,7,0,7,3,4,0,44,2,42,0,42,0,42,0,42,0,42,1,41,0,41,1,40,0,40,0,40,0,40,1,39,2,37,0,37,0,37,0,37,0,37,0,37,0,37,1,36,0,36,0,36,1,35,0,35,0,35,0,35,1,34,1,33,1,32,0,32,0,32,0,32,0,32,2,30,0,30,2,28,0,28,1,27,0,27,0,27,0,27,0,27,0,27,0,27,0,27,1,26,0,26,2,24,0,24,2,22,0,22,0,22,0,22,0,22,2,20,0,20,0,20,1,19,1,18,1,17,0,17,1,16,0,16,0,16,1,15,0,15,2,13,1,12,1,11,0,11,0,11,1,10,1,9,3,6,0,6,1,5,0,29,1,28,1,27,2,25,1,24,2,22,1,21,0,21,1,20,0,20,0,20,0,20,1,19,1,18,1,17,1,16,1,51,0,51,1,50,0,50,1,49,0,49,2,47,0,47,0,47,0,47,0,47,0,47,3,44,0,44,0,44,2,42,0,42],[1,12,0,12,0,12,0,12,0,12,0,12,1,11,0,11,1,10,0,10,0,10,0,10,1,9,0,9,0,66,0,66,0,66,0,66,0,66,1,65,0,65,0,65,0,65,0,65,1,64,0,64,1,63,0,63,2,61,1,60,0,60,0,60,1,59,0,59,1,58,2,56,0,56,0,56,0,56,1,55,0,55,1,54,0,54,0,54,0,54,0,54,0,54,2,52,0,52,0,52,1,51,0,51,0,51,0,51,0,51,0,51,0,51,0,51,1,50,0,50,1,49,0,49,0,49,1,48,2,46,0,46,1,45,1,44,0,44,0,44,1,43,0,43,0,43,1,42,1,41,0,41,1,40,0,40,1,39,1,38,0,38,1,37,0,37,1,36,1,35,1,34,0,34,0,34,0,34,1,33,1,32,0,32,1,31,3,28,1,27,1,26,0,26,0,26,2,24,1,23,0,23,1,22,0,22,0,22,0,22,1,21,0,21,0,21,0,21,0,21,0,21,0,21,0,21,0,21,1,20,1,19,1,18,0,18,0,18,0,18],[0,16,0,16,0,16,1,15,0,15,0,15,1,14,1,13,1,12,1,11,1,10,1,9,1,8,1,7,1,6,0,6,0,6,1,5,1,4,1,3,1,2,0,2,2,0,0,0,1,23,2,21,0,21,0,21,2,19,1,18,1,17,0,17,1,16,2,14,2,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,50,1,49,1,48,0,48,0,48,1,47,0,47,2,45,0,45,1,44,1,43,0,43,2,41,1,40,2,38,0,38,0,38,1,37,0,37,2,35,0,35,0,35,2,33,2,31,0,31,1,30,2,28,1,27,1,26,0,26,1,25,1,24,1,23,1,22,1,21,0,21,0,21,2,19,0,19,1,18,0,18,0,18,0,18,2,16,1,15,0,15,0,15,1,14,0,14,2,12,0,12,1,51,2,49,1,48,1,47,2,45,1,44,0,44,1,43,0,43,2,41,1,40,1,39,0,39,5,34,2,32,1,31,1,30,2,28,2,26,1,25,2,23,1,22,2,20,1,19,1,18,0,18],[0,12,0,12,0,12,0,12,1,11,0,11,0,11,0,11,0,11,1,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,1,9,1,8,0,8,0,8,1,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,20,0,20,1,19,0,19,0,19,0,19,1,18,1,17,0,17,0,17,1,16,0,16,0,16,0,16,0,16,0,16,2,14,1,13,0,13,1,12,0,12,0,12,0,12,0,12,0,12,0,12,1,11,0,11,2,9,0,9,0,9,0,9,1,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,2,28,0,28,0,28,0,28,0,28,0,28,0,28,0,28,0,28,1,27,0,27,0,27,0,27,0,27,1,26,0,26,0,26,0,26,0,26,0,26,0,26,1,25,0,25,0,25,0,25,0,25,0,25,0,25,0,25,0,25,0,25,0,25,1,24,0,24,0,24,0,24],[1,14,0,14,1,13,0,13,0,13,0,13,1,12,0,12,1,11,0,11,0,11,0,11,0,11,0,11,2,55,0,55,0,55,1,54,1,53,0,53,1,52,1,51,0,51,0,51,0,51,0,51,0,51,0,51,3,48,0,48,0,48,0,48,0,48,0,48,0,48,1,47,1,46,0,46,1,45,1,44,0,44,0,44,0,44,1,43,2,41,1,40,1,39,1,38,0,38,0,38,1,37,0,37,0,37,1,36,1,35,0,35,1,34,0,34,1,33,1,32,1,31,0,31,2,29,1,28,3,25,1,24,1,23,0,23,0,23,1,22,0,22,1,21,0,21,1,20,1,19,0,19,1,18,0,18,1,17,2,15,0,15,1,14,0,14,0,14,0,14,1,13,3,10,1,9,1,8,0,8,2,43,0,43,2,41,2,39,0,39,0,39,3,36,1,35,3,32,2,30,2,28,1,27,1,26,4,22,0,22,1,21,1,20,1,19,1,18,1,17,5,12,1,11,1,10,0,10,1,9,3,6,0,61,2,59,2,57,1,56],[0,12,0,12,0,12,0,12,0,12,0,12,0,12,1,11,1,10,0,10,0,10,1,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,1,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,1,7,0,7,1,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,1,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,1,4,0,4,0,4,0,4,0,4,0,4,1,3,1,2,0,2,0,2,0,2,0,2,0,2,1,1,0,1,0,1,0,1,0,1,0,1,1,0,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12],[0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,2,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,1,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,1,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,1,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7],[1,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,1,10,0,10,0,59,0,59,0,59,0,59,0,59,0,59,0,59,0,59,0,59,0,59,0,59,0,59,0,59,0,59,0,59,0,59,0,59,1,58,0,58,0,58,0,58,0,58,0,58,0,58,0,58,0,58,0,58,0,58,1,57,1,56,0,56,0,56,0,56,0,56,1,55,0,55,0,55,1,54,0,54,0,54,0,54,1,53,0,53,0,53,0,53,1,52,0,52,0,52,0,52,0,52,0,52,0,52,0,52,0,52,0,52,0,52,0,52,0,52,0,52,0,52,0,52,1,51,0,51,0,51,0,51,0,51,0,51,0,51,0,51,0,51,0,51,0,51,0,51,0,51,0,51,0,51,0,51,0,51,0,51,1,50,0,50,0,50,0,50,0,50,0,50,1,49,0,49,1,48,0,48,0,48,2,46,0,46,0,46,0,46,0,46,2,44,0,44,0,44,0,44,0,44,0,44,1,43,0,43,0,43,2,41,0,41,0,41,1,40,0,40,0,40],[0,13,0,13,0,13,1,12,0,12,0,12,1,11,0,11,0,11,1,10,0,10,2,8,0,8,0,8,0,8,1,7,0,7,1,6,0,6,1,5,0,5,0,5,0,5,2,3,0,3,0,3,0,3,0,3,0,3,1,2,0,2,1,1,0,25,1,24,0,24,1,23,0,23,1,22,1,21,1,20,1,19,0,19,0,19,1,18,0,18,0,18,0,18,1,17,0,17,0,17,0,17,0,17,0,17,1,16,1,15,1,14,1,13,0,13,1,12,0,12,0,12,0,12,1,11,0,11,0,11,0,11,1,10,1,9,0,9,0,9,0,9,0,9,0,9,3,6,1,5,0,5,1,4,0,4,0,4,0,31,0,31,0,31,0,31,1,30,0,30,3,27,0,27,0,27,0,27,0,27,1,26,0,26,0,26,1,25,0,25,0,25,0,25,0,25,1,24,0,24,1,23,0,23,1,22,1,21,0,21,0,21,0,21,0,21,1,20,1,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,1,18,0,18,1,17],[0,12,0,12,1,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,1,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,1,9,0,9,0,9,1,8,0,8,0,8,1,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,1,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6],[0,12,0,12,2,10,0,10,1,9,1,8,1,7,1,6,1,5,1,4,0,4,0,4,0,33,1,32,0,32,0,32,1,31,0,31,0,31,0,31,0,31,0,31,0,31,1,30,1,29,0,29,0,29,1,28,0,28,0,28,0,28,1,27,0,27,0,27,0,27,0,27,0,27,0,27,0,27,0,27,0,27,0,27,0,27,0,27,0,27,0,27,0,27,0,27,0,27,1,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26],[1,11,0,11,0,11,0,11,0,11,0,11,0,11,1,10,2,8,1,7,0,46,0,46,0,46,0,46,0,46,1,45,0,45,0,45,1,44,1,43,0,43,0,43,0,43,1,42,1,41,0,41,2,39,0,39,0,39,0,39,0,39,0,39,0,39,0,39,0,39,1,38,0,38,0,38,1,37,0,37,0,37,0,37,1,36,0,36,0,36,0,36,0,36,1,35,2,33,0,33,0,33,0,33,0,33,1,32,1,31,0,31,1,30,0,30,1,29,0,29,0,29,1,28,0,28,0,28,0,28,1,27,0,27,1,26,1,25,0,25,0,25,0,25,0,25,1,24,0,24,0,24,0,24,0,24,1,23,0,23,0,23,0,23,0,23,0,23,1,22,0,22,0,22,1,21,0,21,0,21,0,21,0,21,0,21,0,21,0,21,0,21,1,20,0,20,0,20,0,20,0,20,0,20,0,20,0,20,0,20,0,20,0,20,0,20,0,20,0,20,0,20,0,20,1,19,0,19,0,19,0,19,0,19,1,18,0,18,0,18],[0,30,1,29,1,28,1,27,1,26,1,25,0,25,0,25,2,23,1,22,0,22,3,19,0,19,0,19,1,18,0,18,0,18,4,14,0,14,0,14,3,11,0,11,0,11,1,10,0,10,3,7,1,49,1,48,0,48,0,48,3,45,1,44,2,42,1,41,1,40,1,39,1,38,1,37,1,36,2,34,0,34,4,30,1,29,2,27,1,26,2,24,1,23,0,23,2,21,3,18,0,18,1,17,2,15,0,15,1,14,0,14,1,13,0,13,1,12,3,9,3,6,4,2,2,60,1,59,1,58,1,57,1,56,2,54,0,54,1,53,2,51,3,48,1,47,2,45,0,45,1,44,2,42,2,40,0,40,0,40,2,38,2,36,1,35,0,35,1,34,0,34,2,32,1,31,0,31,1,30,0,30,0,30,1,29,1,28,3,25,0,25,1,99,1,98,0,98,0,98,0,98,1,97,0,97,0,97,0,97,0,97,1,96,0,96,0,96,0,96,0,96,0,96,0,96,1,95,0,95,0,95,0,95,0,95,0,95,0,95],[0,12,0,12,0,12,0,12,0,12,1,11,1,10,0,10,0,10,0,10,0,10,1,9,1,8,0,8,0,8,0,8,2,6,0,6,0,6,0,6,1,5,0,5,1,4,1,3,0,3,0,3,0,3,0,3,0,3,0,3,0,3,0,3,0,3,0,3,0,22,0,22,0,22,0,22,0,22,0,22,0,22,0,22,0,22,0,22,0,22,0,22,0,22,1,21,0,21,0,21,0,21,0,21,0,21,0,21,0,21,0,21,0,21,0,21,1,20,0,20,0,20,0,20,0,20,1,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,1,18,0,18,0,18,0,18,0,18,0,18,0,18,1,17,0,17,1,16,1,15,2,13,0,13,1,12,0,12,0,12,0,12,1,11,0,11,1,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,1,9,0,9,0,9,1,8,0,8,0,8,0,8,0,8,0,31,0,31,0,31],[1,28,3,25,1,24,0,24,1,23,0,23,2,21,1,20,1,19,3,16,1,15,2,13,2,11,0,11,1,10,0,10,0,70,1,69,3,66,0,66,0,66,1,65,2,63,1,62,0,62,0,62,2,60,3,57,0,57,1,56,1,55,1,54,0,54,0,54,0,54,0,54,0,54,0,54,2,52,2,50,3,47,0,47,0,47,2,45,0,45,0,45,0,45,0,45,0,45,1,44,0,44,0,44,0,44,0,44,0,44,0,44,0,44,0,44,2,42,0,42,1,41,1,40,0,40,2,38,0,38,1,37,0,37,1,36,1,35,0,35,0,35,2,33,0,33,0,33,2,31,0,31,0,31,0,31,0,31,0,31,0,31,0,31,0,31,3,28,1,27,0,27,0,27,0,27,0,27,0,27,0,27,1,26,1,25,0,25,2,23,0,23,0,23,2,21,1,20,1,19,1,18,1,17,0,17,0,17,1,16,1,15,0,15,0,15,0,15,0,15,0,15,0,15,0,15,2,13,0,13,0,13,0,13,0,13,0,13,1,12],[0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,1,11,0,11,1,10,0,10,0,10,1,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,1,8,0,8,0,8,1,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,1,6,0,6,0,6,0,6,0,6,1,5,1,4,0,4,0,4,0,4,0,4,0,4,0,4,1,3,0,3,0,3,0,3,0,3,0,15,0,15,0,15,0,15,0,15,0,15,0,15,0,15,0,15,0,15,0,15,1,14,0,14,0,14,0,14,0,14,1,13,0,13,0,13,0,13,0,13,0,13,0,13,1,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,1,11,0,11,0,11],[0,12,0,12,1,11,0,11,0,11,0,11,0,11,1,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,1,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,1,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,1,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7],[0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,1,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,1,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,1,9,0,9,0,9,0,9,0,9,0,9,0,9,2,7,0,7,0,7,0,7,0,7,0,7,0,7,1,6,0,6,0,6,0,6,0,6,0,6,0,6,1,5,0,5,0,5,0,5,1,4,1,3,0,3,0,3,0,3,0,3,0,15,1,14,0,14,0,14,0,14,1,13,0,13,0,13,0,13,0,13,0,13,1,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,1,11,0,11,0,11,0,11,0,11,0,11,0,11,1,10,0,10,0,10,0,10,1,9,1,8,0,8,0,8,0,8,0,8,0,8,0,8,1,7,0,7,1,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,1,5,0,5],[0,12,0,12,0,12,0,12,0,12,1,11,0,11,0,11,0,11,1,10,0,10,0,10,0,10,0,10,0,10,1,9,0,9,0,9,0,9,0,9,1,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,1,7,1,6,0,6,0,6,1,5,0,5,1,4,0,4,0,4,0,4,0,4,0,4,1,3,0,3,0,3,0,3,1,2,0,2,0,2,0,2,1,1,1,0,1,11,1,10,0,10,1,9,1,8,0,8,0,8,0,8,1,7,1,6,0,6,0,6,0,6,2,4,0,4,0,4,0,4,1,3,0,3,1,25,1,24,0,24,0,24,2,22,0,22,0,22,0,22,0,22,1,21,0,21,0,21,0,21,0,21,0,21,2,19,1,18,1,17,1,16,1,15,0,15,0,15,0,15,2,13,0,13,0,13,0,13,0,13,0,13,0,13,0,13,0,13,0,13,0,13,0,13,0,13,0,13,0,13,0,13,0,13,0,13,0,13,1,12,0,12,0,12,3,9,0,9,0,9,0,9],[0,15,0,15,0,15,1,14,0,14,1,13,0,13,0,13,0,13,1,12,0,12,0,12,1,11,1,10,0,10,0,10,0,10,2,8,1,7,0,7,0,7,0,7,1,6,0,6,0,6,0,6,0,6,0,22,0,22,0,22,0,22,0,22,0,22,1,21,0,21,0,21,1,20,0,20,1,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19,0,19],[0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77,0,77],[0,12,0,12,0,12,1,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,1,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10],[0,12,0,12,0,12,1,11,0,11,1,10,0,10,0,10,0,10,0,10,1,9,0,9,0,9,1,8,1,7,0,7,0,7,2,5,0,5,1,4,0,4,1,3,0,3,0,3,0,3,0,3,1,2,1,1,0,1,1,0,0,0,0,0,0,16,0,16,2,14,0,14,0,14,0,14,1,13,0,13,1,12,0,12,0,12,0,12,1,11,0,11,0,11,0,11,1,10,1,9,0,9,0,9,0,9,0,9,1,8,0,8,2,6,0,6,1,5,1,4,0,4,1,3,1,2,1,1,1,0,0,0,0,0,0,19,0,19,0,19,1,18,4,14,0,14,0,14,0,14,1,13,1,12,0,12,1,11,1,10,0,10,0,10,0,10,1,9,1,8,2,6,1,5,0,5,2,3,0,36,1,35,0,35,0,35,1,34,0,34,0,34,1,33,2,31,0,31,0,31,0,31,2,29,0,29,0,29,1,28,0,28,0,28,0,28,0,28,1,27,1,26,0,26,0,26,0,26,0,26,2,24,1,23,1,22,1,21,3,18],[0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,1,11,0,11,1,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10],[0,12,0,12,0,12,0,12,1,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,1,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,1,9,0,9,0,9,0,9,0,9,1,8,0,8,1,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7],[1,11,1,10,1,9,0,9,0,9,0,9,2,7,1,6,0,6,0,6,0,6,2,4,1,3,0,3,0,51,0,51,0,51,0,51,0,51,0,51,0,51,0,51,0,51,0,51,0,51,0,51,0,51,0,51,1,50,0,50,0,50,0,50,1,49,0,49,0,49,0,49,0,49,0,49,0,49,0,49,0,49,1,48,0,48,0,48,0,48,0,48,0,48,0,48,0,48,0,48,0,48,0,48,0,48,0,48,0,48,0,48,0,48,0,48,0,48,1,47,0,47,0,47,0,47,0,47,0,47,0,47,0,47,0,47,1,46,0,46,0,46,0,46,1,45,0,45,0,45,1,44,0,44,0,44,1,43,0,43,0,43,1,42,0,42,0,42,0,42,0,42,0,42,0,42,0,42,0,42,0,42,0,42,0,42,0,42,0,42,1,41,0,41,0,41,0,41,0,41,0,41,1,40,0,40,0,40,0,40,0,40,0,40,0,40,0,40,0,40,0,40,0,40,0,40,0,40,0,40,0,40,0,40,0,40,0,40,0,40],[0,12,0,12,0,12,0,12,1,11,0,11,0,11,0,11,0,11,0,11,1,10,0,10,1,9,0,9,0,9,1,8,0,8,0,8,0,8,0,8,0,8,0,8,1,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,1,6,1,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,1,4,0,4,0,4,0,4,0,4,0,4,0,4,1,3,0,3,0,3,0,3,0,3,0,3,1,2,0,2,0,2,0,2,0,14,0,14,0,14,0,14,0,14,1,13,1,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,1,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,1,10,1,9,0,9,1,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,1,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,1,6,0,6],[2,10,0,10,0,10,2,8,1,7,0,7,0,7,1,6,0,6,0,6,0,6,0,6,1,5,0,5,1,4,1,3,0,3,1,2,0,95,0,95,1,94,2,92,0,92,0,92,0,92,0,92,0,92,0,92,0,92,1,91,0,91,0,91,0,91,0,91,0,91,0,91,0,91,0,91,0,91,0,91,1,90,0,90,0,90,0,90,0,90,0,90,0,90,0,90,0,90,1,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89,0,89],[0,18,2,16,0,16,2,14,0,14,1,13,0,13,1,12,0,12,0,12,1,11,1,10,0,10,0,10,0,10,0,54,2,52,1,51,0,51,2,49,1,48,0,48,1,47,0,47,0,47,0,47,1,46,1,45,1,44,0,44,1,43,1,42,0,42,0,42,1,41,0,41,1,40,0,40,1,39,1,38,1,37,0,37,2,35,0,35,0,35,3,32,1,31,0,31,2,29,0,29,0,29,0,29,1,28,0,28,1,27,1,26,2,24,1,23,0,23,1,22,0,22,1,21,0,21,0,21,0,21,0,21,0,21,1,20,1,19,0,19,2,17,1,16,1,15,2,13,0,13,2,11,0,11,0,11,1,10,0,10,2,8,2,6,2,4,1,3,0,3,0,3,2,30,2,28,0,28,0,28,3,25,2,23,1,22,3,19,1,18,1,17,2,15,0,15,0,15,1,14,2,12,0,12,1,11,0,11,0,60,3,57,0,57,0,57,1,56,0,56,3,53,1,52,1,51,2,49,2,47,0,47,1,46,2,44,0,44,1,43],[0,12,0,12,0,12,2,10,1,9,0,9,0,9,0,9,0,9,1,8,0,8,0,8,0,8,1,7,0,7,0,7,0,7,0,7,1,6,0,6,1,5,1,4,0,4,0,4,0,4,0,4,0,4,0,4,0,18,0,18,0,18,0,18,0,18,0,18,0,18,1,17,0,17,0,17,0,17,0,17,0,17,0,17,0,17,0,17,1,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,1,15,0,15,0,15,0,15,0,15,0,15,1,14,0,14,0,14,1,13,0,13,0,13,0,13,0,13,0,13,0,13,0,13,0,13,0,13,0,13,0,13,0,13,0,13,0,13,0,13,0,13,0,13,0,13,0,13,1,12,0,12,0,12,0,12,0,12,0,12,0,12,1,11,0,11,0,11,0,11,1,10,0,10,1,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,1,8,0,8,0,8,0,8,0,8,0,8,2,6,0,6,0,6,0,6,0,6],[0,12,0,12,1,11,0,11,1,10,0,10,0,10,0,10,0,10,1,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,1,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,1,7,0,7,1,6,0,6,0,6,0,6,1,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,1,4,0,4,0,4,0,4,0,4,1,3,0,3,0,3,0,3,0,3,0,3,0,3,0,3,0,3,0,3,0,3,0,3,0,3,0,3,0,3,0,3,0,3,0,3,0,3,0,3,0,3,0,3,0,3,0,3,0,3,0,3,0,3,0,3,0,3,1,2,0,2],[0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,1,11,0,11,1,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,1,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,1,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,1,7,0,7,1,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,1,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5],[0,12,0,12,0,12,0,12,1,11,1,10,0,10,0,10,0,10,0,10,1,9,0,9,1,8,0,8,1,7,2,5,0,5,0,5,0,5,0,5,0,5,0,5,1,4,0,4,1,3,0,19,0,19,1,18,0,18,0,18,0,18,2,16,1,15,0,15,1,14,0,14,0,14,0,14,0,14,0,14,1,13,0,13,0,13,0,13,0,13,1,12,1,11,0,11,0,11,1,10,0,10,1,9,1,8,0,8,0,8,0,8,0,8,0,8,0,8,1,7,1,6,0,6,0,6,0,6,1,5,1,4,0,4,0,4,0,4,1,3,0,17,0,17,0,17,2,15,0,15,0,15,0,15,0,15,0,15,0,15,0,15,0,15,0,15,1,14,0,14,1,13,0,13,1,12,1,11,0,11,0,11,0,11,0,11,0,11,0,11,1,10,1,9,0,9,1,8,0,8,0,8,0,8,1,7,0,7,0,7,0,7,0,7,1,6,1,5,0,5,0,5,1,4,0,18,0,18,0,18,0,18,1,17,0,17,0,17,0,17],[0,12,0,12,1,11,0,11,0,11,0,11,0,11,0,11,0,11,2,9,1,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,1,7,0,7,0,7,0,7,0,7,1,6,0,6,0,6,0,6,0,6,1,5,0,5,0,5,0,5,0,5,0,5,1,4,0,4,0,4,1,3,0,3,0,3,0,3,0,3,0,3,0,3,0,3,0,3,0,3,0,3,0,15,1,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14],[0,12,0,12,0,12,0,12,0,12,0,12,1,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,1,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,1,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,1,8,0,8,0,8,1,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,1,6,0,6,0,6,0,6,1,5,1,4,0,4,0,4,0,4,0,4,0,4,0,4,1,3,0,3,0,3,0,3,0,3,0,3,0,3,1,2,0,2,0,2,0,2,0,2,0,2,1,13,0,13,0,13,0,13,0,13,0,13,1,12,0,12,0,12,0,12],[2,16,1,15,0,15,0,15,1,14,1,13,0,13,1,12,1,11,0,11,0,11,0,11,0,11,1,10,0,122,0,122,0,122,2,120,0,120,1,119,0,119,1,118,0,118,0,118,0,118,1,117,2,115,1,114,0,114,1,113,0,113,1,112,0,112,0,112,2,110,0,110,0,110,0,110,0,110,0,110,0,110,1,109,0,109,0,109,1,108,1,107,0,107,1,106,0,106,0,106,0,106,1,105,3,102,0,102,0,102,0,102,0,102,2,100,0,100,0,100,1,99,3,96,1,95,2,93,0,93,0,93,0,93,0,93,0,93,0,93,2,91,0,91,1,90,1,89,3,86,1,85,2,83,2,81,1,80,1,79,2,77,0,77,0,77,1,76,0,76,0,76,1,75,1,74,0,74,1,73,3,70,1,69,2,67,2,65,1,64,3,61,0,61,0,61,3,58,2,56,0,56,1,55,1,54,2,52,0,52,0,52,1,51,2,49,0,49,4,45,0,45,0,45,1,44,1,43,2,41,0,41,0,41,0,41,0,41,0,41],[0,12,0,12,0,12,0,12,1,11,1,10,0,10,1,9,1,8,0,8,0,8,1,7,1,6,0,6,0,6,1,5,0,24,0,24,0,24,0,24,0,24,2,22,3,19,3,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,1,15,1,14,1,13,1,12,0,12,0,12,0,12,0,12,1,11,2,9,0,9,0,9,0,9,1,8,0,41,1,40,0,40,0,40,0,40,0,40,0,40,0,40,0,40,0,40,0,40,0,40,0,40,0,40,0,40,0,40,0,40,0,40,0,40,0,40,0,40,0,40,0,40,0,40,1,39,0,39,0,39,1,38,0,38,0,38,0,38,0,38,0,38,0,38,2,36,0,36,1,35,1,34,0,34,1,33,0,33,0,33,0,33,1,32,0,32,0,32,1,31,0,31,0,31,0,31,2,29,0,29,0,29,1,28,0,28,1,27,1,26,0,26,0,26,0,26,1,25,1,24,0,24,0,24,0,24,1,23,1,22,0,22,1,21,2,19,0,19,0,19,0,19,1,18,0,18],[0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38],[0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,1,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,1,10,0,10,0,10,1,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,1,8],[0,13,0,13,0,13,1,12,1,11,0,11,0,11,1,10,0,10,0,10,0,10,3,7,0,7,0,7,0,7,0,7,1,6,1,5,0,5,1,4,0,4,0,27,0,27,1,26,3,23,0,23,1,22,0,22,1,21,0,21,0,21,1,20,1,19,2,17,0,17,0,17,0,17,0,17,0,17,0,17,0,17,1,16,0,16,0,16,1,15,1,14,0,14,0,14,0,14,0,14,1,13,0,13,0,13,0,13,1,12,0,12,0,12,0,12,0,12,0,12,0,12,1,11,0,11,1,10,0,10,0,10,1,9,0,9,1,8,0,8,2,6,1,5,1,4,2,2,0,2,0,2,1,1,0,1,0,1,0,1,1,17,1,16,1,15,0,15,2,13,0,13,1,12,0,12,1,11,0,11,0,11,0,11,1,39,0,39,0,39,0,39,0,39,1,38,2,36,0,36,0,36,0,36,0,36,0,36,0,36,0,36,3,33,0,33,0,33,1,32,0,32,0,32,0,32,2,30,0,30,1,29,0,29,0,29,0,29,0,29],[1,19,0,19,0,19,2,17,1,16,0,16,0,16,0,16,0,16,1,15,0,15,0,15,1,14,0,14,1,13,2,11,0,11,0,11,0,59,0,59,0,59,1,58,0,58,0,58,2,56,1,55,0,55,0,55,1,54,3,51,1,50,0,50,0,50,0,50,0,50,3,47,0,47,0,47,0,47,1,46,1,45,0,45,3,42,0,42,1,41,1,40,0,40,0,40,0,40,0,40,1,39,0,39,0,39,0,39,3,36,0,36,1,35,2,33,1,32,2,30,2,28,0,28,0,28,0,28,1,27,3,24,0,24,1,23,1,22,0,22,0,22,2,20,0,20,1,19,1,18,1,17,0,17,0,17,0,17,2,15,1,14,0,14,0,14,2,12,3,9,3,6,2,4,2,2,0,2,0,2,2,0,1,44,1,43,0,43,0,43,2,41,3,38,1,37,2,35,1,34,3,31,0,31,3,28,2,26,2,24,2,22,0,22,0,22,2,20,2,18,0,18,1,17,0,17,0,17,2,15,0,15,1,14,0,14,2,12,1,11],[0,16,0,16,1,15,0,15,0,15,0,15,1,14,0,14,0,14,0,14,1,13,0,13,0,13,1,12,0,12,0,12,0,12,0,12,0,12,1,11,0,11,1,10,0,10,0,10,1,9,1,8,3,5,1,4,1,3,1,2,0,2,0,2,0,2,0,2,0,2,0,2,0,2,0,2,0,2,0,16,1,15,0,15,0,15,1,14,1,13,1,12,1,11,0,11,0,11,0,11,0,11,1,10,0,10,1,9,0,9,0,9,0,9,0,29,1,28,0,28,3,25,1,24,1,23,2,21,1,20,2,18,1,17,1,16,0,16,2,14,0,14,0,14,1,13,0,13,2,11,0,11,3,8,0,8,0,8,1,38,0,38,2,36,1,35,1,34,0,34,2,32,0,32,0,32,1,31,2,29,1,28,0,28,1,27,0,27,0,27,1,26,0,26,2,24,0,24,0,24,0,24,1,23,0,23,3,20,1,19,1,18,0,18,1,17,1,16,1,15,0,15,1,14,1,13,0,13,0,13,0,13,0,13,1,43,0,43,0,43],[0,12,0,12,1,11,1,10,1,9,0,9,0,9,0,9,0,9,1,32,0,32,0,32,0,32,0,32,1,31,0,31,0,31,0,31,0,31,0,31,0,31,0,31,1,30,2,28,0,28,0,28,2,26,0,26,1,25,0,25,1,24,0,24,0,24,0,24,1,23,0,23,0,23,1,22,0,22,0,22,0,22,2,20,0,20,1,19,1,18,1,17,0,17,0,17,0,17,0,17,2,15,1,14,0,14,2,12,0,12,2,10,0,10,0,10,2,8,1,7,1,6,1,5,0,5,1,30,1,29,1,28,0,28,1,27,0,27,0,27,0,27,0,27,1,26,0,26,0,26,0,26,1,25,1,24,1,23,0,23,0,23,1,22,0,22,1,21,0,21,2,19,1,18,1,17,2,15,0,15,1,14,0,14,1,13,1,12,0,12,0,12,0,12,1,11,0,11,0,11,1,10,1,9,2,7,0,7,0,7,0,7,1,32,0,32,1,31,2,29,1,28,0,28,0,28,0,28,0,28,1,27,2,25,0,25,1,24,1,23],[0,12,0,12,0,12,1,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,1,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,1,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,1,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,1,7,1,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,1,5,0,5,0,5,1,4,0,4,0,4,0,4,0,4,1,3,0,3,0,3,0,3,0,3,0,3,0,3,0,3,0,3,0,3,0,15,0,15,0,15,0,15,1,14,0,14,0,14,1,13,0,13],[0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,1,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11],[0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,1,11,0,11,0,11,1,10,0,10,0,10,0,10,0,10,0,10,1,9,0,9,0,9,0,9,0,9,0,9,0,9,1,8,0,8,0,8,1,7,1,6,0,6,0,6,0,6,0,6,1,5,0,5,0,5,0,5,1,4,1,3,0,3,0,3,0,3,0,17,0,17,1,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,1,15,0,15,2,13,1,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,2,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,1,9,0,9,0,9,2,7],[0,12,0,12,0,12,0,12,0,12,1,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,1,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,1,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,1,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,1,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,1,6,0,6,0,6,0,6,0,6,0,6,0,6,1,5,0,5,0,5,0,5,0,5],[0,12,0,12,0,12,1,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,1,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,2,8,0,8,0,8,0,8,0,8,0,8,1,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,1,6,0,6,0,6,0,6,0,6,0,6,1,5,0,5,0,5,0,5,1,4,0,4,0,4,0,4,0,4,0,4,0,4,0,4,0,4,0,4,1,3,0,3,1,2,0,2,0,2,0,2,0,2,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,1,13,0,13,0,13,0,13,0,13,0,13,1,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,1,11,0,11,0,11,0,11,0,11,0,11,1,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10],[0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,1,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,1,10,1,9,0,9,0,9,1,8,0,8,1,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7],[0,12,1,11,0,11,0,11,0,11,0,11,0,11,0,11,1,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,1,9,1,8,0,40,0,40,0,40,1,39,1,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,0,38,1,37,0,37,0,37,0,37,0,37,0,37,0,37,0,37,0,37,0,37,0,37,0,37,0,37,1,36,0,36,0,36,0,36,1,35,1,34,0,34,0,34,0,34,1,33,0,33,0,33,0,33,1,32,0,32,0,32,0,32,0,32,0,32,0,32,0,32,0,32,1,31,0,31,0,31,0,31,0,31,0,31,1,30,0,30,0,30,0,30,1,29,0,29,1,28,0,28,0,28,0,28,0,28,0,28,1,27,1,26,0,26,1,25,0,25,0,25,0,25,1,24,0,24,0,24,1,23,0,23,0,23,0,23,0,23,0,23,1,22,0,22,2,20,0,20,0,20,0,20,0,20,0,20,0,20,0,20,0,20,0,20,0,20],[0,19,1,18,2,16,0,16,1,15,1,14,0,14,1,13,0,13,2,11,1,10,0,10,1,59,0,59,0,59,0,59,0,59,0,59,2,57,3,54,1,53,0,53,1,52,0,52,1,51,1,50,0,50,0,50,0,50,1,49,0,49,2,47,1,46,1,45,0,45,0,45,0,45,2,43,0,43,1,42,0,42,1,41,1,40,1,39,1,38,2,36,2,34,0,34,0,34,1,33,2,31,0,31,0,31,0,31,3,28,2,26,0,26,0,26,0,26,0,26,2,24,0,24,0,24,1,23,1,22,1,21,2,19,3,16,0,16,0,16,0,16,1,15,0,15,0,15,3,12,0,12,0,12,0,12,0,12,0,12,0,12,3,9,2,7,0,7,0,52,1,51,1,50,0,50,1,49,1,48,3,45,0,45,0,45,1,44,0,44,1,43,0,43,1,42,2,40,0,40,2,38,0,38,0,38,0,38,1,37,2,35,0,35,0,35,2,33,0,33,0,33,1,32,0,32,0,32,1,31,0,31,1,30,4,26,1,25,1,24],[1,69,1,68,1,67,0,67,2,65,3,62,1,61,2,59,1,58,1,57,2,55,2,53,1,52,2,50,1,49,4,45,0,45,2,43,0,43,3,40,0,40,0,40,1,39,0,39,2,37,2,35,0,35,1,34,2,32,1,31,2,29,0,29,2,27,0,27,2,25,5,20,1,19,2,17,1,16,4,12,1,11,1,10,2,8,1,7,2,5,1,4,1,3,0,3,0,3,0,3,2,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[2,27,0,27,2,25,2,23,0,23,0,23,1,22,1,21,1,20,2,18,0,18,1,17,3,14,0,14,0,14,1,13,0,13,0,13,0,13,2,11,0,11,0,117,2,115,0,115,0,115,0,115,0,115,1,114,1,113,1,112,2,110,0,110,1,109,0,109,0,109,0,109,0,109,0,109,1,108,1,107,0,107,0,107,0,107,0,107,0,107,0,107,0,107,0,107,1,106,0,106,2,104,1,103,0,103,0,103,0,103,0,103,0,103,2,101,0,101,0,101,0,101,2,99,0,99,2,97,1,96,1,95,0,95,0,95,1,94,0,94,0,94,0,94,0,94,0,94,0,94,0,94,0,94,0,94,1,93,0,93,1,92,0,92,0,92,0,92,0,92,0,92,0,92,0,92,0,92,0,92,0,92,0,92,1,91,0,91,0,91,0,91,0,91,0,91,1,90,0,90,0,90,0,90,0,90,0,90,0,90,0,90,0,90,0,90,0,90,0,90,0,90,0,90,0,90,0,90,0,90,0,90,0,90,0,90,0,90,0,90],[0,12,1,11,0,11,0,11,1,10,0,10,0,10,0,10,1,27,1,26,0,26,0,26,0,26,0,26,0,26,0,26,0,26,1,25,0,25,0,25,0,25,0,25,1,24,0,24,0,24,0,24,1,23,0,23,1,22,1,21,0,21,0,21,0,21,1,20,0,20,0,20,1,19,0,19,1,18,0,18,0,18,1,17,0,17,0,17,0,17,1,16,0,16,0,16,0,16,0,16,1,15,0,15,0,15,1,14,1,13,0,13,0,13,0,13,0,13,0,13,1,12,0,12,0,12,1,11,0,11,1,10,0,10,0,10,0,10,0,10,3,7,0,7,0,7,1,6,0,6,0,6,0,6,1,20,0,20,0,20,0,20,0,20,0,20,0,20,1,19,0,19,0,19,0,19,1,18,0,18,0,18,0,18,0,18,0,18,0,18,0,18,1,17,0,17,0,17,1,16,1,15,1,14,1,13,0,13,0,13,0,13,0,13,1,12,1,11,0,11,0,11,0,11,1,10,1,9,0,9,0,9,0,9,0,9,1,8,0,8],[0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,1,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11],[0,12,1,11,1,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,1,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,36,0,36,0,36,0,36,0,36,0,36,0,36,0,36,0,36,0,36,0,36,0,36,0,36,0,36,0,36,0,36,0,36,0,36,0,36,0,36,1,35,0,35,0,35,0,35,0,35,0,35,0,35,0,35,0,35,0,35,0,35,1,34,0,34,0,34,0,34,0,34,0,34,0,34,0,34,0,34,0,34,0,34,0,34,0,34,0,34,0,34,1,33,0,33,0,33,0,33,1,32,0,32,1,31,0,31,0,31,0,31,0,31,0,31,0,31,0,31,0,31,0,31,0,31,0,31,0,31,1,30,0,30,0,30,0,30,1,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,1,28,0,28,0,28,0,28,0,28,1,27,0,27,0,27,0,27,0,27],[0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,1,11,0,11,0,11,0,11,0,11,0,11,0,11,1,10,0,10,1,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,2,7,0,7,0,7,0,7,0,7,1,6,1,5,0,5,0,5,1,4,0,4,1,3,1,2,0,2,0,2,0,2,0,2,1,1,0,1,0,13,0,13,0,13,0,13,0,13,0,13,1,12,2,10,0,10,0,10,1,9,1,8,0,8,0,8,1,7,1,6,1,5,0,5,0,5,0,5,1,4,1,21,0,21,0,21,0,21,2,19,0,19,1,18,1,17,0,17,0,17,0,17,0,17,0,17,0,17,1,16,2,14,0,14,1,13,0,13,0,13,2,11,0,11,0,11,1,10,1,9,2,7,0,7,0,7,1,6,0,6,1,5,0,28,1,27,0,27,2,25,2,23,1,22,0,22,0,22,2,20,0,20,1,19,1,18,0,18,1,17,0,17,0,17,1,16,0,16,0,16],[1,18,0,18,1,17,2,15,2,13,3,10,3,7,0,7,1,6,3,3,2,1,0,1,1,0,0,0,2,43,1,42,0,42,1,41,1,40,0,40,2,38,1,37,0,37,2,35,1,34,0,34,0,34,1,33,1,32,0,32,1,31,1,30,1,29,0,29,1,28,1,27,1,26,2,24,0,24,0,24,0,24,1,23,0,23,0,23,0,23,2,21,0,21,1,20,1,19,0,19,1,18,2,16,0,16,0,16,0,16,0,16,1,15,1,14,0,14,0,14,1,13,0,13,0,13,1,12,0,12,0,12,1,11,1,10,1,9,2,7,0,7,0,7,0,7,0,7,1,6,0,6,1,5,0,5,0,5,0,5,0,5,0,28,0,28,1,27,0,27,0,27,1,26,0,26,1,25,2,23,1,22,1,21,0,21,0,21,2,19,0,19,1,18,0,18,0,18,0,18,0,18,0,18,0,18,0,18,0,18,0,18,0,18,0,18,0,18,1,17,0,17,0,17,0,17,0,17,0,17,0,17,0,17,0,17,1,16,0,16],[0,12,1,11,0,11,3,8,0,8,0,8,2,6,1,5,0,5,0,5,0,46,0,46,1,45,0,45,1,44,0,44,1,43,1,42,0,42,0,42,0,42,0,42,0,42,1,41,0,41,0,41,0,41,0,41,1,40,0,40,0,40,0,40,0,40,1,39,1,38,1,37,0,37,1,36,0,36,1,35,0,35,0,35,0,35,0,35,2,33,1,32,2,30,0,30,1,29,0,29,0,29,0,29,2,27,2,25,0,25,1,24,0,24,3,21,3,18,1,17,2,15,2,13,0,13,2,11,1,10,0,10,1,46,2,44,1,43,0,43,0,43,1,42,1,41,1,40,0,40,0,40,1,39,1,38,1,37,0,37,3,34,0,34,4,30,0,30,1,29,1,28,1,27,1,26,0,26,0,26,2,24,0,24,1,23,1,22,2,20,1,19,1,18,1,17,1,16,0,16,1,15,1,14,3,52,1,51,1,50,1,49,0,49,1,48,1,47,0,47,1,46,1,45,2,43,1,42,0,42,1,41,0,41,0,41,0,41,0,41],[1,45,1,44,1,43,0,43,0,43,1,42,2,40,4,36,2,34,1,33,3,30,2,28,2,26,3,23,3,20,0,20,2,18,1,17,3,14,0,14,1,13,1,12,1,11,1,10,1,9,0,84,4,80,1,79,0,79,0,79,1,78,3,75,0,75,0,75,0,75,1,74,3,71,2,69,1,68,0,68,1,67,3,64,1,63,2,61,2,59,2,57,0,57,2,55,2,53,0,53,2,51,1,50,2,48,3,45,1,44,0,44,1,43,4,39,1,38,2,36,1,35,4,31,1,30,1,29,1,28,1,27,1,26,0,26,1,25,2,23,2,21,2,105,1,104,2,102,2,100,1,99,2,97,2,95,1,94,2,92,4,88,5,83,2,81,1,80,0,80,1,79,3,76,2,74,0,74,2,72,1,71,0,71,2,69,3,66,1,65,5,60,3,57,1,56,3,53,2,51,4,47,2,45,1,44,5,39,1,38,2,36,0,36,3,33,3,30,1,29,1,28,4,24,2,22,1,136,1,135,1,134,1,133,4,129,2,127,3,124],[1,11,0,11,0,11,1,10,2,8,0,8,0,8,0,52,1,51,0,51,0,51,0,51,0,51,0,51,0,51,0,51,0,51,0,51,0,51,0,51,1,50,0,50,0,50,0,50,0,50,0,50,0,50,1,49,0,49,0,49,0,49,1,48,0,48,0,48,0,48,0,48,0,48,0,48,0,48,0,48,0,48,0,48,1,47,0,47,0,47,0,47,0,47,0,47,0,47,0,47,1,46,0,46,0,46,0,46,0,46,0,46,0,46,0,46,0,46,3,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43,0,43],[0,12,0,12,0,12,1,11,0,11,0,11,0,11,1,10,1,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,0,29,1,28,0,28,0,28,0,28,0,28,0,28,0,28,0,28],[0,12,0,12,0,12,2,10,0,10,0,10,1,9,1,8,0,8,0,8,2,6,1,5,0,5,0,5,0,5,1,4,1,3,0,3,0,3,0,3,0,25,0,25,0,25,0,25,1,24,2,22,0,22,1,21,1,20,0,20,0,20,1,19,1,18,0,18,0,18,0,18,0,18,0,18,0,18,0,18,0,18,0,18,0,18,0,18,0,18,0,18,0,18,0,18,0,18,0,18,1,17,0,17,0,17,0,17,0,17,0,17,0,17,0,17,0,17,0,17,0,17,1,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16,0,16],[0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,1,11,0,11,0,11,0,11,0,11,0,11,0,11,1,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,0,10,1,9,0,9,0,9,0,9,0,9,0,9,0,9,1,8,0,8,0,8,0,8,1,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,0,7,1,6,0,6,0,6,0,6,0,6,0,6,0,6,1,5,0,5,0,5,0,5,0,5,0,5,1,4,0,4,0,4,0,4,0,4,0,4,1,3,1,2,0,2,0,2,0,2,0,2,0,2,0,2,0,2,0,2,0,2,0,14,0,14,0,14,0,14,1,13,1,12],[0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,1,11,0,11,0,11,0,11,1,10,0,10,2,8,0,8,0,8,0,8,0,8,0,8,0,8,1,7,0,7,0,7,0,7,1,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,0,6,1,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,1,4,0,4,0,4,0,4,0,4,0,4,0,4,0,4,1,3,0,3,0,3,1,2,0,2,0,2,0,2,0,2,0,2,0,2,0,2,0,2,0,2,0,14,0,14,0,14],[0,12,2,10,1,9,2,7,0,7,0,7,0,7,0,7,2,5,1,4,3,1,0,1,1,0,0,0,0,0,0,53,2,51,0,51,1,50,0,50,0,50,0,50,2,48,0,48,0,48,0,48,4,44,2,42,0,42,0,42,0,42,0,42,0,42,1,41,0,41,0,41,1,40,1,39,0,39,1,38,0,38,0,38,1,37,0,37,2,35,1,34,0,34,0,34,0,34,1,33,0,33,0,33,1,32,2,30,1,29,1,28,0,28,1,27,1,26,0,26,1,25,0,25,0,25,0,25,1,24,1,23,1,22,1,21,2,19,0,19,0,19,1,18,0,18,1,17,3,14,0,14,1,13,2,11,1,10,0,10,2,8,0,8,2,6,1,5,0,5,1,4,4,0,0,0,3,37,2,35,0,35,1,34,5,29,2,27,2,25,2,23,1,22,4,18,0,18,3,15,2,13,3,10,1,9,0,9,0,9,1,8,1,80,3,77,2,75,0,75,1,74,0,74,1,73,0,73,4,69,3,66,1,65,2,63,3,60,3,57],[1,11,0,11,0,11,2,9,0,9,0,9,0,9,0,51,0,51,0,51,0,51,0,51,0,51,0,51,1,50,0,50,0,50,0,50,0,50,0,50,0,50,0,50,1,49,0,49,1,48,0,48,0,48,0,48,1,47,0,47,0,47,0,47,1,46,0,46,0,46,0,46,0,46,0,46,0,46,0,46,0,46,1,45,0,45,1,44,0,44,1,43,0,43,0,43,1,42,2,40,0,40,0,40,0,40,0,40,0,40,1,39,0,39,0,39,0,39,0,39,0,39,0,39,0,39,0,39,0,39,1,38,0,38,0,38,0,38,0,38,0,38,1,37,0,37,0,37,0,37,1,36,0,36,0,36,0,36,1,35,1,34,1,33,0,33,0,33,0,33,0,33,0,33,1,32,0,32,0,32,1,31,1,30,0,30,0,30,0,30,1,29,0,29,0,29,0,29,1,28,0,28,0,28,0,28,0,28,0,28,0,28,0,28,0,28,0,28,0,28,0,28,0,28,0,28,0,28,1,27,0,27,1,26,0,26,1,25,0,25],[0,13,0,13,1,12,0,12,1,11,2,9,0,9,0,9,1,8,0,8,2,6,2,4,2,2,0,2,0,2,1,27,1,26,1,25,5,20,1,19,0,19,3,16,0,16,0,16,1,15,2,13,0,13,1,12,0,12,0,51,1,50,2,48,3,45,1,44,1,43,2,41,0,41,1,40,1,39,0,39,2,37,1,36,1,35,1,34,3,31,0,31,0,31,2,29,0,29,2,27,1,26,1,25,1,24,0,24,2,22,2,20,1,19,0,19,0,19,2,17,1,16,1,15,2,13,2,11,0,11,3,51,1,50,0,50,0,50,1,49,2,47,2,45,0,45,2,43,1,42,1,41,0,41,0,41,1,40,2,38,0,38,0,38,2,36,0,36,3,33,2,31,1,30,3,27,1,26,2,24,1,23,1,22,0,22,2,20,2,18,2,16,2,14,4,10,2,8,0,56,2,54,4,50,3,47,1,46,0,46,0,46,1,45,1,44,2,42,2,40,3,37,1,36,1,35,1,34,6,28,1,27,2,25,1,24,2,22,3,19],[0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,1,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,1,10,0,10,1,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,1,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8],[0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,1,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,1,10,1,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,1,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8],[1,17,1,16,0,16,0,16,1,15,0,15,1,14,0,14,0,14,1,13,0,13,1,12,1,11,0,11,0,56,1,55,2,53,2,51,0,51,0,51,1,50,1,49,0,49,2,47,0,47,0,47,4,43,1,42,0,42,1,41,0,41,1,40,0,40,0,40,1,39,1,38,2,36,0,36,0,36,2,34,0,34,0,34,1,33,2,31,0,31,1,30,1,29,2,27,0,27,1,26,0,26,2,24,0,24,2,22,1,21,1,20,0,20,1,19,0,19,1,18,1,17,0,17,0,17,1,16,0,16,0,16,1,15,0,15,0,15,0,15,0,15,0,15,0,15,1,14,1,13,2,11,1,10,0,10,1,9,0,9,2,7,0,7,0,7,1,6,1,5,1,4,1,3,1,2,0,2,1,1,1,0,0,0,0,0,0,0,0,23,0,23,1,22,0,22,2,20,1,19,0,19,0,19,1,18,0,18,0,18,0,18,0,18,1,17,1,16,1,15,3,12,1,11,4,7,0,7,0,7,2,5,2,3,0,3,0,3,0,3],[0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,1,11,0,11,1,10,0,10,0,10,0,10,0,10,0,10,1,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,0,9,1,8,0,8,0,8,0,8,0,8,0,8,0,8,1,7,0,7,0,7,0,7,1,6,0,6,0,6,0,6,0,6,0,6,0,6,1,5,0,5,0,5,0,5,0,5,0,5,0,5,0,5,1,4,0,4,0,4,0,4,0,4,0,4,0,4,0,4,0,4,0,4,0,16,1,15,0,15,0,15,0,15,1,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,0,14,1,13,0,13,0,13,0,13,0,13,0,13,0,13,0,13,0,13,0,13,0,13,0,13,0,13,0,13,1,12,0,12,0,12,0,12,0,12,0,12,0,12,0,12,1,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,0,11,1,10,0,10,0,10,0,10,0,10,0,10],[1,12,1,11,1,10,0,10,2,8,0,8,1,7,0,7,0,7,1,6,0,6,0,6,1,5,1,4,0,4,0,4,0,4,0,4,0,57,1,56,0,56,0,56,0,56,0,56,0,56,0,56,1,55,0,55,0,55,0,55,0,55,0,55,0,55,0,55,0,55,0,55,0,55,0,55,0,55,0,55,0,55,0,55,0,55,0,55,0,55,0,55,0,55,0,55,0,55,0,55,0,55,1,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54,0,54]]};</script>
+<script>/* BALAR SPARES — plain-English query console.
+   Matches the wording of a question against the questions the tool knows how to
+   answer, then reads the reply off the computed metrics. It never invents a
+   figure: if nothing matches well enough it says so and lists what it can do. */
+const CONSOLE = {
+
+CHIPS: [
+  "What should I reorder first?",
+  "How much will that order cost?",
+  "What is my dead stock?",
+  "How much money is stuck in stock that isn't moving?",
+  "What is selling best this month?",
+  "Which parts earn me the most?",
+  "What is picking up?",
+  "What is falling away?",
+  "Did anything run out of stock?",
+  "Which category earns the most?",
+  "Am I holding too much stock of anything?",
+  "How is BLR-1011 doing?",
+  "What can you answer?",
+],
+
+/* Each intent has weighted phrases. Longer, more specific phrases score higher,
+   so "how much will the order cost" beats the generic "order". */
+INTENTS: [
+  { id:"help",      w:{"what can you answer":9,"what can you do":9,"help":5,"what questions":7,"list of questions":8} },
+  { id:"reorder",   w:{"what should i reorder":9,"reorder first":9,"what to reorder":9,"what do i need to order":9,
+                       "purchase list":7,"running low":7,"about to run out":8,"needs reorder":8,"restock":6,
+                       "reorder":5,"order first":7,"low stock":6,"need to buy":9,"what to buy":8,
+                       "do i need to buy":9,"what should i buy":9,"shopping list":7} },
+  { id:"ordercost", w:{"how much will that order cost":10,"how much will the order cost":10,"order cost":8,
+                       "cost of the order":9,"order value":8,"how much to spend":8,"how much do i need to spend":9,
+                       "total purchase":7} },
+  { id:"urgent",    w:{"most urgent":9,"run out first":9,"which will run out first":10,"most critical":8,
+                       "biggest risk":7,"what is critical":8,"about to finish":9,"about to end":8,
+                       "finish first":8,"most pressing":8} },
+  { id:"dead",      w:{"dead stock":9,"not selling":8,"stopped moving":9,"slow moving":8,"no sales":7,
+                       "hasn't sold":8,"has not sold":8,"obsolete":7,"write off":6,"stale":6,"products are slow":8,"parts are slow":8,
+                       "slow sellers":8,"which are slow":8,"not moving":8} },
+  { id:"deadmoney", w:{"money is stuck":10,"money stuck":9,"capital tied":10,"cash tied":9,"tied up":8,
+                       "how much money is stuck":10,"stuck in stock":9,"money in dead stock":10} },
+  { id:"topunits",  w:{"selling best":9,"best selling":9,"top seller":9,"most units":9,"sells the most":9,
+                       "what is selling":7,"fastest selling":8,"best sellers":9,"top sellers":9,
+                       "which product is getting sold":9,"most sold":8,"best product":8,
+                       "best performer":8,"star product":8,"top product":8} },
+  { id:"toprev",    w:{"earn me the most":10,"most revenue":9,"highest revenue":9,"most money":8,
+                       "most profitable":8,"biggest earners":9,"top by revenue":10,"earns the most":9} },
+  { id:"growing",   w:{"picking up":9,"growing":8,"trending up":9,"going up":8,"increasing":7,
+                       "selling more":8,"on the rise":8,"improving":6} },
+  { id:"declining", w:{"falling away":10,"declining":8,"trending down":9,"going down":8,"decreasing":7,
+                       "selling less":8,"dropping":7,"slowing down":8,"losing sales":8,
+                       "worst performer":9,"worst selling":9,"doing badly":8,"weakest":8} },
+  { id:"revenue",   w:{"total revenue":9,"total sales":9,"how much have i sold":9,"overall revenue":9,
+                       "revenue so far":8,"total turnover":8,"how much revenue":9,
+                       "how much did i sell":9,"how much have i made":9,"sales so far":8} },
+  { id:"invvalue",  w:{"inventory value":9,"stock value":9,"value of my stock":10,"how much stock do i have":9,
+                       "worth of stock":8,"inventory at cost":9,"how much inventory":8} },
+  { id:"stockout",  w:{"run out of stock":9,"ran out":8,"out of stock":9,"stockout":9,"zero stock":9,
+                       "hit zero":8,"nil stock":7} },
+  { id:"category",  w:{"which category":9,"category earns":10,"best category":9,"by category":8,
+                       "category wise":8,"which categories":9,"revenue by category":10} },
+  { id:"nosale30",  w:{"zero sales":9,"no sale in 30":9,"nothing sold":8,"had no sales":9,
+                       "didn't sell":8,"did not sell":8,"sold nothing":9,"zero sale":8,
+                       "no sales this month":9,"sold none":8} },
+  { id:"trend",     w:{"this month to last month":10,"compare this month":9,"month on month":9,
+                       "versus last month":9,"vs last month":9,"against last month":9,
+                       "compare the last two months":10,"how do the two months compare":10} },
+  { id:"overstock", w:{"overstocked":9,"over stocked":9,"too much stock":10,"excess stock":9,
+                       "overbought":8,"stop ordering":9,"should i stop":8,"over ordered":8,
+                       "holding too much":9,"months of stock":8} },
+  { id:"counts",    w:{"how many parts":9,"how many skus":9,"how many products":9,"catalogue size":8,
+                       "how many items":8,"total skus":8} },
+],
+
+match(q){
+  const s = " " + q.toLowerCase().replace(/[^a-z0-9\- ]/g," ").replace(/\s+/g," ") + " ";
+  let best = null, bs = 0;
+  this.INTENTS.forEach(it => {
+    let sc = 0;
+    for(const p in it.w) if(s.includes(" " + p) || s.includes(p + " ") || s.includes(p)) sc = Math.max(sc, it.w[p]);
+    if(sc > bs){ bs = sc; best = it.id; }
+  });
+  return {id:best, score:bs};
+},
+
+/* A question naming a SKU code or a part is answered about that part, whatever
+   else it says, because that is almost always what was meant. */
+findSku(q, M){
+  const code = q.toUpperCase().match(/BLR[\s\-]?(\d{4})/);
+  if(code){ const want = "BLR-" + code[1]; const m = M.find(x => x.sku === want); if(m) return m; }
+  const s = q.toLowerCase();
+  const hits = M.filter(m => s.includes(m.name.toLowerCase().split(" — ")[0].toLowerCase()));
+  if(hits.length === 1) return hits[0];
+  if(hits.length > 1){
+    const full = M.filter(m => s.includes(m.name.toLowerCase()));
+    if(full.length === 1) return full[0];
+  }
+  return null;
+},
+
+tbl(cols, rows){
+  return `<table><thead><tr>${cols.map(c =>
+    `<th class="${c.num?"num":""} nos">${c.h}</th>`).join("")}</tr></thead><tbody>` +
+    rows.map(r => `<tr>${cols.map(c =>
+      `<td class="${c.num?"num":""}">${c.v(r)}</td>`).join("")}</tr>`).join("") +
+    `</tbody></table>`;
+},
+
+box(title, body, src){
+  return `<div class="answer"><h3>${title}</h3>${body}` +
+         (src ? `<div class="src">${src}</div>` : "") + `</div>`;
+},
+
+answer(q, ctx){
+  const {D, M, S, ANALYTICS, fmt} = ctx;
+  const {inr, inrK, num, n1, esc, badge} = fmt;
+  const win = `${D.dates[0]} to ${D.dates[D.dates.length-1]}, ${D.dates.length} days`;
+  const clip = (t,n) => t.length > n ? t.slice(0,n-1) + "…" : t;
+
+  // a named part wins over a general intent
+  const one = this.findSku(q, M);
+  const {id, score} = this.match(q);
+
+  if(one && score < 9){
+    const status = one.dead ? '<span class="badge b-mag">Dead stock</span>'
+                 : one.urg ? badge(one.urg) : '<span class="badge b-ok">OK</span>';
+    const body = this.tbl(
+      [{h:"Measure", v:r=>r[0]}, {h:"Value", num:true, v:r=>r[1]}],
+      [["Status", status],
+       ["Stock on hand", num(one.stock) + " units"],
+       ["Sold, last 7 days", num(one.u7)],
+       ["Sold, last 30 days", num(one.u30)],
+       ["Sold, 30 days before that", num(one.prev30)],
+       ["Change month on month", one.trend === null ? "—" :
+          `<span class="${one.trend>=0?"delta-up":"delta-dn"}">${one.trend>=0?"+":""}${one.trend.toFixed(1)}%</span>`],
+       ["Average sales per day", one.v30.toFixed(2)],
+       ["Days of cover left", one.cover === null ? "no sales in 30 days" : n1(one.cover) + " days"],
+       ["Supplier lead time", one.lead + " days"],
+       ["Reorder point", Math.round(one.rop) + " units"],
+       ["Suggested order now", one.order ? num(one.order) + " units (" + inr(one.order*one.cost) + ")" : "none needed"],
+       ["Capital tied up in it", inr(one.tied)],
+       ["Days since last sale", num(one.days_since)]]);
+    return this.box(`${esc(one.sku)} — ${esc(one.name)}`, body,
+      `Category ${esc(one.cat)} · cost ${inr(one.cost)} · sells at ${inr(one.price)} · computed over ${win}.`);
+  }
+
+  if(score < 5) return this.box("I could not match that question",
+    `<p>I only answer from the figures in this tool, and I did not recognise that one well enough
+      to be sure I would answer the right thing. Rather than guess, here is what I can answer:</p>
+     <ul style="margin:8px 0 0 18px; padding:0">
+       ${this.CHIPS.slice(0,12).map(c => `<li style="margin:3px 0">${esc(c)}</li>`).join("")}
+     </ul>
+     <p style="margin-top:9px">You can also name any part or SKU code — for example
+      <span class="mono">How is BLR-1003 doing?</span> — and I will read out everything known about it.</p>`);
+
+  switch(id){
+
+  case "help": return this.box("What I can answer",
+    `<p>I read the tables on the other tabs and answer in words. Every number I give is the
+       same number shown there — I do not estimate anything.</p>
+     <ul style="margin:8px 0 0 18px; padding:0">
+       ${this.CHIPS.slice(0,12).map(c => `<li style="margin:3px 0">${esc(c)}</li>`).join("")}
+     </ul>
+     <p style="margin-top:9px">Name any part or SKU code to get its full picture.</p>`);
+
+  case "reorder": {
+    const r = ANALYTICS.reorderList(M);
+    if(!r.length) return this.box("Nothing needs reordering",
+      `<p>No part is short of cover right now. A line is raised when days of cover fall below the
+         supplier lead time plus a 7-day buffer plus a 7-day warning window.</p>`, `Computed over ${win}.`);
+    return this.box(`${r.length} part${r.length===1?"":"s"} need reordering`,
+      `<p>In order of urgency. The first ${S.critical} will run out before a fresh order could land,
+         because their cover is shorter than the supplier's lead time.</p>` +
+      this.tbl([{h:"SKU", v:m=>`<span class="sku">${m.sku}</span>`},
+                {h:"Part", v:m=>esc(clip(m.name,30))},
+                {h:"Urgency", v:m=>badge(m.urg)},
+                {h:"Stock", num:true, v:m=>num(m.stock)},
+                {h:"Cover", num:true, v:m=>n1(m.cover)+"d"},
+                {h:"Lead", num:true, v:m=>m.lead+"d"},
+                {h:"Order", num:true, v:m=>num(m.order)},
+                {h:"Value", num:true, v:m=>inr(m.order*m.cost)}], r.slice(0,12)) +
+      (r.length > 12 ? `<p style="margin-top:8px">Showing the 12 most urgent of ${r.length}. The Reorder tab has the full list and a CSV download.</p>` : "") +
+      `<p style="margin-top:9px">The whole order comes to <b>${inr(S.order_value)}</b> at your cost price.</p>`,
+      `${S.critical} critical, ${S.urgent} urgent, ${S.soon} soon · computed over ${win}.`);
+  }
+
+  case "ordercost": {
+    const r = ANALYTICS.reorderList(M);
+    if(!r.length) return this.box("No order is needed", `<p>Nothing is short of cover, so there is nothing to buy.</p>`);
+    const byTier = ["Critical","Urgent","Soon"].map(t => {
+      const g = r.filter(m => m.urg === t);
+      return {t, n:g.length, v:g.reduce((s,m)=>s+m.order*m.cost,0)};
+    }).filter(x => x.n);
+    return this.box(`The order comes to ${inr(S.order_value)}`,
+      `<p>That is ${num(r.reduce((s,m)=>s+m.order,0))} units across ${r.length} parts, priced at your cost
+         price, not the selling price. Split by urgency:</p>` +
+      this.tbl([{h:"Urgency", v:x=>badge(x.t)},
+                {h:"Parts", num:true, v:x=>x.n},
+                {h:"Cost", num:true, v:x=>inr(x.v)}], byTier) +
+      `<p style="margin-top:9px">If cash is tight, the ${byTier[0].n} ${byTier[0].t.toLowerCase()} line${byTier[0].n===1?"":"s"}
+         alone cost <b>${inr(byTier[0].v)}</b> and are the ones that will otherwise go out of stock.</p>`,
+      `Each quantity covers the lead time plus 7 days of buffer plus the next 30 days, less what is already on the shelf.`);
+  }
+
+  case "urgent": {
+    const r = ANALYTICS.reorderList(M);
+    if(!r.length) return this.box("Nothing is at risk", `<p>No part is short of cover right now.</p>`);
+    const m = r[0];
+    return this.box(`${esc(m.sku)} — ${esc(m.name)}`,
+      `<p>This is the one to place first. It has <b>${num(m.stock)} units</b> left, selling
+         ${m.v30.toFixed(2)} a day, which is <b>${n1(m.cover)} days of cover</b> — against a supplier
+         lead time of <b>${m.lead} days</b>. Even if you order today it runs out
+         ${Math.max(0, Math.round(m.lead - m.cover))} day(s) before the stock arrives.</p>
+       <p>Suggested order: <b>${num(m.order)} units</b> at ${inr(m.cost)} each = <b>${inr(m.order*m.cost)}</b>.</p>` +
+      (r.length > 1 ? `<p style="margin-top:9px">Next after it: ` +
+        r.slice(1,4).map(x => `${esc(x.sku)} (${n1(x.cover)}d cover)`).join(", ") + `.</p>` : ""),
+      `Computed over ${win}.`);
+  }
+
+  case "dead": {
+    const d = ANALYTICS.deadList(M);
+    if(!d.length) return this.box("No dead stock",
+      `<p>Nothing has gone 60 days or more without a sale while still holding stock.</p>`);
+    return this.box(`${d.length} part${d.length===1?"":"s"} have stopped moving`,
+      `<p>No sale for 60 days or more, with stock still on the shelf. Together they hold
+         <b>${inr(S.dead_tied)}</b> at cost — ${(S.dead_tied/S.inventory_at_cost*100).toFixed(1)}% of
+         everything you have in stock.</p>` +
+      this.tbl([{h:"SKU", v:m=>`<span class="sku">${m.sku}</span>`},
+                {h:"Part", v:m=>esc(clip(m.name,32))},
+                {h:"Stock", num:true, v:m=>num(m.stock)},
+                {h:"Days unsold", num:true, v:m=>num(m.days_since)},
+                {h:"Capital tied", num:true, v:m=>inr(m.tied)}], d.slice(0,12)) +
+      (d.length > 12 ? `<p style="margin-top:8px">Showing the 12 largest of ${d.length}; the Dead Stock tab has them all.</p>` : ""),
+      `Computed over ${win}. 60 days is the threshold this tool uses.`);
+  }
+
+  case "deadmoney": {
+    const d = ANALYTICS.deadList(M);
+    const pct = S.inventory_at_cost ? (S.dead_tied/S.inventory_at_cost*100).toFixed(1) : "0";
+    return this.box(`${inr(S.dead_tied)} is sitting in stock that is not selling`,
+      `<p>That is <b>${pct}%</b> of the ${inr(S.inventory_at_cost)} you hold in stock, spread over
+         ${d.length} part${d.length===1?"":"s"} that have not sold in 60 days or more.</p>` +
+      (d.length ? `<p>The biggest single one is <b>${esc(d[0].name)}</b> (${esc(d[0].sku)}):
+         ${num(d[0].stock)} units, unsold for ${d[0].days_since} days, ${inr(d[0].tied)} tied up.</p>` : "") +
+      `<p>For comparison, the ${S.reorder_count} parts that are about to run out need
+         <b>${inr(S.order_value)}</b> to restock. Freeing the dead stock would cover
+         ${S.order_value ? Math.min(100, Math.round(S.dead_tied/S.order_value*100)) : 0}% of that.</p>`,
+      `Capital tied = units on hand × your cost price.`);
+  }
+
+  case "topunits": {
+    const t = ANALYTICS.topList(M, 10);
+    return this.box("Best sellers by units, last 30 days",
+      this.tbl([{h:"SKU", v:m=>`<span class="sku">${m.sku}</span>`},
+                {h:"Part", v:m=>esc(clip(m.name,32))},
+                {h:"Units", num:true, v:m=>num(m.u30)},
+                {h:"Revenue", num:true, v:m=>inr(m.u30*m.price)},
+                {h:"Status", v:m=>m.dead?'<span class="badge b-mag">Dead</span>':badge(m.urg)}], t) +
+      `<p style="margin-top:9px"><b>${esc(t[0].name)}</b> leads on volume with ${num(t[0].u30)} units.
+        Note the order changes if you rank by money instead — ask "which parts earn me the most?".</p>`,
+      `Last 30 days of the data window (${win}).`);
+  }
+
+  case "toprev": {
+    const t = [...M].sort((a,b) => (b.u30*b.price)-(a.u30*a.price)).slice(0,10);
+    const byUnits = ANALYTICS.topList(M, 1)[0];
+    return this.box("Biggest earners, last 30 days",
+      this.tbl([{h:"SKU", v:m=>`<span class="sku">${m.sku}</span>`},
+                {h:"Part", v:m=>esc(clip(m.name,32))},
+                {h:"Revenue", num:true, v:m=>inr(m.u30*m.price)},
+                {h:"Units", num:true, v:m=>num(m.u30)},
+                {h:"Price each", num:true, v:m=>inr(m.price)}], t) +
+      `<p style="margin-top:9px"><b>${esc(t[0].name)}</b> earns the most at ${inr(t[0].u30*t[0].price)}` +
+      (t[0].sku !== byUnits.sku
+        ? ` — even though <b>${esc(byUnits.name)}</b> shifts more units (${num(byUnits.u30)} against ${num(t[0].u30)}).
+            Volume and money do not rank the same way, which is worth knowing before you decide what to push.</p>`
+        : `, and it also shifts the most units.</p>`),
+      `Revenue = units sold in the last 30 days × selling price.`);
+  }
+
+  case "growing": {
+    const u = ANALYTICS.trendList(M, "up").slice(0,8);
+    if(!u.length) return this.box("Not enough history to compare",
+      `<p>Comparing two 30-day periods needs at least 60 days of data and a part that sold at
+         least 15 units in the earlier one. Nothing qualifies yet.</p>`);
+    return this.box("Picking up: last 30 days against the 30 before",
+      this.tbl([{h:"SKU", v:m=>`<span class="sku">${m.sku}</span>`},
+                {h:"Part", v:m=>esc(clip(m.name,32))},
+                {h:"Before", num:true, v:m=>num(m.prev30)},
+                {h:"Now", num:true, v:m=>num(m.u30)},
+                {h:"Change", num:true, v:m=>`<span class="delta-up">+${m.trend.toFixed(0)}%</span>`},
+                {h:"Cover", num:true, v:m=>n1(m.cover)+"d"},
+                {h:"Status", v:m=>badge(m.urg)}], u) +
+      `<p style="margin-top:9px"><b>${esc(u[0].name)}</b> is growing fastest, up
+        ${u[0].trend.toFixed(0)}% from ${num(u[0].prev30)} to ${num(u[0].u30)} units.` +
+      (u.filter(m=>m.urg).length
+        ? ` Watch out: ${u.filter(m=>m.urg).length} of these are already short of cover — demand is rising
+            faster than the stock behind them.</p>` : `</p>`),
+      `Only parts that sold 15+ units in the earlier period, so a jump from 1 to 3 does not top the list.`);
+  }
+
+  case "declining": {
+    const d = ANALYTICS.trendList(M, "down").slice(0,8);
+    if(!d.length) return this.box("Not enough history to compare",
+      `<p>Comparing two 30-day periods needs at least 60 days of data and a part that sold at
+         least 15 units in the earlier one. Nothing qualifies yet.</p>`);
+    return this.box("Falling away: last 30 days against the 30 before",
+      this.tbl([{h:"SKU", v:m=>`<span class="sku">${m.sku}</span>`},
+                {h:"Part", v:m=>esc(clip(m.name,32))},
+                {h:"Before", num:true, v:m=>num(m.prev30)},
+                {h:"Now", num:true, v:m=>num(m.u30)},
+                {h:"Change", num:true, v:m=>`<span class="delta-dn">${m.trend.toFixed(0)}%</span>`},
+                {h:"Stock", num:true, v:m=>num(m.stock)},
+                {h:"Cover", num:true, v:m=>n1(m.cover)+"d"}], d) +
+      `<p style="margin-top:9px"><b>${esc(d[0].name)}</b> is falling fastest, down
+        ${Math.abs(d[0].trend).toFixed(0)}% from ${num(d[0].prev30)} to ${num(d[0].u30)} units, with
+        ${num(d[0].stock)} still on the shelf — ${n1(d[0].cover)} days of cover at the new rate.
+        These are the ones to stop reordering before they turn into dead stock.</p>`,
+      `Only parts that sold 15+ units in the earlier period.`);
+  }
+
+  case "revenue":
+    return this.box(`${inr(S.revenue)} over ${D.dates.length} days`,
+      `<p>That is ${num(S.units_sold)} units across ${S.skus} parts, at selling price, for
+         ${win}. It works out at about <b>${inr(S.revenue/D.dates.length)}</b> a day.</p>
+       <p>${S.sold_30d} of the ${S.skus} parts sold at least one unit in the last 30 days;
+         ${S.no_sale_30d} sold none.</p>`,
+      `Revenue = units sold × selling price, summed over every part and every day in the window.`);
+
+  case "invvalue":
+    return this.box(`${inr(S.inventory_at_cost)} of stock on hand`,
+      `<p>${num(S.units_in_stock)} units across ${S.skus} parts, valued at <b>your cost price</b>,
+         not the selling price. Of that, <b>${inr(S.dead_tied)}</b> (${(S.dead_tied/S.inventory_at_cost*100).toFixed(1)}%)
+         is in parts that have not sold for 60 days or more.</p>
+       <p>The ${S.reorder_count} parts that are running short need a further
+         <b>${inr(S.order_value)}</b> to bring back up to cover.</p>`,
+      `Stock value = closing stock on ${D.dates[D.dates.length-1]} × cost price.`);
+
+  case "stockout": {
+    const so = M.filter(m => m.stockout_days > 0).sort((a,b)=>b.stockout_days-a.stockout_days);
+    if(!so.length) return this.box("Nothing ran out",
+      `<p>No part hit zero stock at any point in the last 30 days.</p>`);
+    const lost = so.reduce((s,m)=>s+m.stockout_days,0);
+    return this.box(`${so.length} part${so.length===1?"":"s"} ran out of stock`,
+      `<p>Between them they spent <b>${lost} listing-days</b> at zero stock in the last 30 days. Every
+         one of those is a day the listing could not sell and the ranking slipped.</p>` +
+      this.tbl([{h:"SKU", v:m=>`<span class="sku">${m.sku}</span>`},
+                {h:"Part", v:m=>esc(clip(m.name,32))},
+                {h:"Days at zero", num:true, v:m=>num(m.stockout_days)},
+                {h:"Sold 30d", num:true, v:m=>num(m.u30)},
+                {h:"Stock now", num:true, v:m=>num(m.stock)}], so),
+      `Counted from the closing-stock figure on each of the last 30 days.`);
+  }
+
+  case "category": {
+    const c = ANALYTICS.categoryRevenue(M);
+    const tot = c.reduce((s,x)=>s+x[1],0);
+    return this.box(`${esc(c[0][0])} earns the most`,
+      this.tbl([{h:"Category", v:x=>esc(x[0])},
+                {h:"Revenue", num:true, v:x=>inr(x[1])},
+                {h:"Share", num:true, v:x=>(x[1]/tot*100).toFixed(1)+"%"}], c) +
+      `<p style="margin-top:9px"><b>${esc(c[0][0])}</b> brings in ${inr(c[0][1])},
+        ${(c[0][1]/tot*100).toFixed(1)}% of the total. The top three together make
+        ${((c[0][1]+c[1][1]+c[2][1])/tot*100).toFixed(1)}%.</p>`,
+      `Whole data window (${win}), at selling price.`);
+  }
+
+  case "nosale30": {
+    const z = M.filter(m => m.u30 === 0).sort((a,b)=>b.tied-a.tied);
+    if(!z.length) return this.box("Everything sold", `<p>Every part sold at least one unit in the last 30 days.</p>`);
+    const tied = z.reduce((s,m)=>s+m.tied,0);
+    return this.box(`${z.length} parts sold nothing in the last 30 days`,
+      `<p>Together they hold <b>${inr(tied)}</b> of stock. ${z.filter(m=>m.dead).length} of them have now
+         crossed 60 days without a sale and count as dead stock; the rest are still inside that window.</p>` +
+      this.tbl([{h:"SKU", v:m=>`<span class="sku">${m.sku}</span>`},
+                {h:"Part", v:m=>esc(clip(m.name,32))},
+                {h:"Stock", num:true, v:m=>num(m.stock)},
+                {h:"Days unsold", num:true, v:m=>num(m.days_since)},
+                {h:"Capital", num:true, v:m=>inr(m.tied)},
+                {h:"Status", v:m=>m.dead?'<span class="badge b-mag">Dead</span>':'<span class="badge b-warn">Watch</span>'}],
+               z.slice(0,12)) +
+      (z.length > 12 ? `<p style="margin-top:8px">Showing the 12 holding the most money, of ${z.length}.</p>` : ""),
+      `Computed over ${win}.`);
+  }
+
+  case "overstock": {
+    // still selling, but holding more than three months of cover: money that could be working elsewhere
+    const o = M.filter(m => m.u30 > 0 && m.cover !== null && m.cover > 90)
+               .sort((a,b) => b.tied - a.tied);
+    if(!o.length) return this.box("Nothing looks overstocked",
+      `<p>No part that is still selling holds more than 90 days of cover.</p>`);
+    const tied = o.reduce((s,m)=>s+m.tied,0);
+    return this.box(`${o.length} part${o.length===1?"":"s"} are carrying more than 3 months of stock`,
+      `<p>These are still selling, so they are not dead — but at the current rate it would take over
+         90 days to clear what is on the shelf. Together they hold <b>${inr(tied)}</b>.</p>` +
+      this.tbl([{h:"SKU", v:m=>`<span class="sku">${m.sku}</span>`},
+                {h:"Part", v:m=>esc(clip(m.name,32))},
+                {h:"Stock", num:true, v:m=>num(m.stock)},
+                {h:"Sells/day", num:true, v:m=>m.v30.toFixed(2)},
+                {h:"Cover", num:true, v:m=>n1(m.cover)+"d"},
+                {h:"Capital", num:true, v:m=>inr(m.tied)}], o.slice(0,12)) +
+      (o.length > 12 ? `<p style="margin-top:8px">Showing the 12 holding the most money, of ${o.length}.</p>` : "") +
+      `<p style="margin-top:9px">Stop reordering these until the cover comes down, and put the cash
+        into the ${S.reorder_count} parts that are about to run out.</p>`,
+      `Cover = stock ÷ average daily sales over the last 30 days.`);
+  }
+
+  case "trend": {
+    const u = ANALYTICS.trendList(M, "up").slice(0,5);
+    const d = ANALYTICS.trendList(M, "down").slice(0,5);
+    if(!u.length && !d.length) return this.box("Not enough history to compare",
+      `<p>Comparing two 30-day periods needs at least 60 days of data.</p>`);
+    const now  = M.reduce((s,m)=>s+m.u30, 0), before = M.reduce((s,m)=>s+m.prev30, 0);
+    const pc = before ? ((now-before)/before*100) : null;
+    const cols = [{h:"SKU", v:m=>`<span class="sku">${m.sku}</span>`},
+                  {h:"Part", v:m=>esc(clip(m.name,30))},
+                  {h:"Before", num:true, v:m=>num(m.prev30)},
+                  {h:"Now", num:true, v:m=>num(m.u30)},
+                  {h:"Change", num:true, v:m=>`<span class="${m.trend>=0?"delta-up":"delta-dn"}">${m.trend>=0?"+":""}${m.trend.toFixed(0)}%</span>`}];
+    return this.box("This month against the one before",
+      `<p>Across the whole catalogue you sold <b>${num(now)}</b> units in the last 30 days against
+         <b>${num(before)}</b> in the 30 before that` +
+      (pc === null ? "." : ` — <span class="${pc>=0?"delta-up":"delta-dn"}">${pc>=0?"+":""}${pc.toFixed(1)}%</span>.`) +
+      `</p><p style="margin-top:10px"><b>Picking up</b></p>` + this.tbl(cols, u) +
+      `<p style="margin-top:12px"><b>Falling away</b></p>` + this.tbl(cols, d),
+      `Only parts that sold 15+ units in the earlier period appear in the two lists.`);
+  }
+
+  case "counts":
+    return this.box(`${S.skus} parts in the catalogue`,
+      `<p>Over ${win} they sold ${num(S.units_sold)} units for ${inr(S.revenue)}.
+        ${S.sold_30d} sold at least once in the last 30 days, ${S.no_sale_30d} did not.
+        ${S.reorder_count} need reordering and ${S.dead_count} count as dead stock.</p>`,
+      `Across ${ANALYTICS.categoryRevenue(M).length} categories.`);
+  }
+
+  return this.box("I could not answer that", `<p>Try one of the suggested questions.</p>`);
+}
+};
+if (typeof module !== "undefined") module.exports = CONSOLE;
+</script>
+<script>
+/* ==================================================================== app */
+const LS = "balar.userRows.v1";
+const $  = s => document.querySelector(s);
+const el = (t, c, h) => { const n = document.createElement(t); if(c) n.className = c; if(h !== undefined) n.innerHTML = h; return n; };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+const inr = n => "₹" + Math.round(n).toLocaleString("en-IN");
+const inrK = n => n >= 1e7 ? "₹" + (n/1e7).toFixed(2) + " cr"
+               : n >= 1e5 ? "₹" + (n/1e5).toFixed(2) + " L"
+               : inr(n);
+const n1 = n => (n === null || n === undefined) ? "—" : Number(n).toFixed(1);
+const num = n => Number(n).toLocaleString("en-IN");
+
+let userRows = [];
+try { userRows = JSON.parse(localStorage.getItem(LS) || "[]"); } catch(e){ userRows = []; }
+function saveUser(){ try { localStorage.setItem(LS, JSON.stringify(userRows)); } catch(e){} }
+
+let D, M, S;
+function recompute(){
+  D = ANALYTICS.build(SEED, userRows);
+  M = ANALYTICS.metrics(D);
+  S = ANALYTICS.summary(M);
+}
+
+/* ---------------------------------------------------------------- charts */
+const SVGNS = "http://www.w3.org/2000/svg";
+function svg(w, h){ const s = document.createElementNS(SVGNS, "svg");
+  s.setAttribute("viewBox", `0 0 ${w} ${h}`); s.setAttribute("width", w); s.setAttribute("height", h);
+  s.setAttribute("role", "img"); return s; }
+function sv(tag, attrs, text){ const n = document.createElementNS(SVGNS, tag);
+  for(const k in attrs) n.setAttribute(k, attrs[k]); if(text !== undefined) n.textContent = text; return n; }
+
+/* Horizontal bars. One hue by default: the bar length carries the value, so a
+   second colour would only add noise. colorFn overrides it where a status matters. */
+function barChart(host, data, fmt, colorFn){
+  host.innerHTML = "";
+  if(!data.length){ host.appendChild(el("div","empty","Nothing to show.")); return; }
+  const RH = 25, GAP = 7, LW = 186, VW = 86, W = 640;   // LW fits a 26-char part name at 11.5px
+  const H = data.length * (RH + GAP) + 6;
+  const max = Math.max(...data.map(d => d.value)) || 1;
+  const bw = W - LW - VW - 10;
+  const s = svg(W, H);
+  data.forEach((d, i) => {
+    const y = i * (RH + GAP) + 3;
+    const w = Math.max(2, d.value / max * bw);
+    const g = sv("g", {});
+    g.appendChild(sv("title", {}, `${d.label}: ${fmt(d.value)}`));
+    g.appendChild(sv("text", {x:LW-8, y:y+RH/2+4, "text-anchor":"end", "font-size":11.5,
+                              fill:"#44606D"}, d.label));
+    g.appendChild(sv("rect", {x:LW, y:y+3, width:bw, height:RH-6, rx:3, fill:"#EDF3F6"}));
+    g.appendChild(sv("rect", {x:LW, y:y+3, width:w, height:RH-6, rx:3,
+                              fill: colorFn ? colorFn(d, i) : "#0593C6"}));
+    g.appendChild(sv("text", {x:LW+bw+8, y:y+RH/2+4, "font-size":11.5, "font-weight":600,
+                              fill:"#0E1D26"}, fmt(d.value)));
+    s.appendChild(g);
+  });
+  host.appendChild(s);
+}
+
+/* Diverging bars for growth and decline: zero in the middle, cyan up, magenta down. */
+function divergingChart(host, data){
+  host.innerHTML = "";
+  if(!data.length){ host.appendChild(el("div","empty","Not enough history yet to compare two months.")); return; }
+  const RH = 24, GAP = 6, LW = 186, W = 640, VAL = 50;
+  const H = data.length * (RH + GAP) + 6;
+  const max = Math.max(...data.map(d => Math.abs(d.value))) || 1;
+  // VAL is reserved on BOTH sides for the percentage text, so a full-length
+  // negative bar cannot run back into the part-name column
+  const half = (W - LW - VAL * 2) / 2, mid = LW + VAL + half;
+  const s = svg(W, H);
+  s.appendChild(sv("line", {x1:mid, y1:0, x2:mid, y2:H, stroke:"#D2E2EA", "stroke-width":1}));
+  data.forEach((d, i) => {
+    const y = i * (RH + GAP) + 3;
+    const w = Math.max(2, Math.abs(d.value) / max * half);
+    const up = d.value >= 0;
+    const g = sv("g", {});
+    g.appendChild(sv("title", {}, `${d.label}: ${d.prev} → ${d.now} units (${up?"+":""}${d.value.toFixed(1)}%)`));
+    g.appendChild(sv("text", {x:LW-8, y:y+RH/2+4, "text-anchor":"end", "font-size":11.5, fill:"#44606D"}, d.label));
+    g.appendChild(sv("rect", {x: up ? mid : mid-w, y:y+3, width:w, height:RH-6, rx:3,
+                              fill: up ? "#0593C6" : "#D83995"}));
+    g.appendChild(sv("text", {x: up ? mid+w+7 : mid-w-7, y:y+RH/2+4, "font-size":11.5, "font-weight":650,
+                              "text-anchor": up ? "start" : "end",
+                              fill: up ? "#036F96" : "#B0266F"},
+                              (up?"+":"") + d.value.toFixed(0) + "%"));
+    s.appendChild(g);
+  });
+  host.appendChild(s);
+}
+
+/* Revenue over time. Area plus line, with a light 7-day mean to show the shape. */
+function lineChart(host, series){
+  host.innerHTML = "";
+  if(series.length < 2){ host.appendChild(el("div","empty","Not enough days yet.")); return; }
+  const W = 1000, H = 230, L = 62, R = 14, T = 14, B = 34;
+  const iw = W - L - R, ih = H - T - B;
+  const max = Math.max(...series.map(d => d.value)) * 1.12 || 1;
+  const x = i => L + (series.length === 1 ? iw/2 : i / (series.length - 1) * iw);
+  const y = v => T + ih - (v / max) * ih;
+  const s = svg(W, H);
+  for(let k = 0; k <= 4; k++){
+    const gv = max * k / 4, gy = y(gv);
+    s.appendChild(sv("line", {x1:L, y1:gy, x2:W-R, y2:gy, stroke:"#D2E2EA", "stroke-width":1}));
+    s.appendChild(sv("text", {x:L-9, y:gy+4, "text-anchor":"end", "font-size":10.5, fill:"#7794A2"}, inrK(gv)));
+  }
+  const pts = series.map((d,i) => `${x(i).toFixed(1)},${y(d.value).toFixed(1)}`);
+  s.appendChild(sv("polygon", {points:`${L},${T+ih} ${pts.join(" ")} ${W-R},${T+ih}`, fill:"#DCEEF6"}));
+  s.appendChild(sv("polyline", {points:pts.join(" "), fill:"none", stroke:"#0593C6",
+                                "stroke-width":1.6, "stroke-linejoin":"round"}));
+  const k = 7, ma = series.map((d,i) => {
+    const a = series.slice(Math.max(0,i-k+1), i+1);
+    return a.reduce((t,z)=>t+z.value,0)/a.length;
+  });
+  s.appendChild(sv("polyline", {points: ma.map((v,i)=>`${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" "),
+                                fill:"none", stroke:"#D83995", "stroke-width":2,
+                                "stroke-linejoin":"round", opacity:.9}));
+  const step = Math.max(1, Math.floor(series.length / 7));
+  series.forEach((d,i) => {
+    if(i % step === 0 || i === series.length-1)
+      s.appendChild(sv("text", {x:x(i), y:H-11, "text-anchor":"middle", "font-size":10, fill:"#7794A2"},
+                       d.date.slice(5).replace("-","/")));
+  });
+  series.forEach((d,i) => {
+    const g = sv("g", {});
+    g.appendChild(sv("title", {}, `${d.date}: ${inr(d.value)}`));
+    g.appendChild(sv("rect", {x:x(i)-iw/series.length/2, y:T, width:Math.max(3, iw/series.length),
+                              height:ih, fill:"transparent"}));
+    s.appendChild(g);
+  });
+  const lg = el("div", null,
+    `<div style="display:flex;gap:16px;font-size:11.5px;color:#44606D;margin-top:6px">
+       <span><span style="display:inline-block;width:18px;height:3px;background:#0593C6;vertical-align:middle"></span> daily</span>
+       <span><span style="display:inline-block;width:18px;height:3px;background:#D83995;vertical-align:middle"></span> 7-day average</span>
+     </div>`);
+  host.appendChild(s); host.appendChild(lg);
+}
+
+/* ---------------------------------------------------------------- tables */
+function table(host, cols, rows, foot){
+  host.innerHTML = "";
+  const thead = el("thead"), tr = el("tr");
+  cols.forEach(c => {
+    const th = el("th", (c.num ? "num " : "") + (c.sort === false ? "nos" : ""), esc(c.h));
+    if(c.sort !== false){ th.dataset.k = c.k; th.title = "Sort by " + c.h; }
+    tr.appendChild(th);
+  });
+  thead.appendChild(tr); host.appendChild(thead);
+  const tb = el("tbody");
+  if(!rows.length) {
+    const td = el("td"); td.colSpan = cols.length;
+    td.appendChild(el("div","empty", host.dataset.empty || "Nothing to show."));
+    const r = el("tr"); r.appendChild(td); tb.appendChild(r);
+  }
+  rows.forEach(r => {
+    const t = el("tr");
+    cols.forEach(c => {
+      const td = el("td", (c.num ? "num " : "") + (c.cls || ""));
+      const v = c.f ? c.f(r) : r[c.k];
+      if(c.html) td.innerHTML = v; else td.textContent = v === null || v === undefined ? "—" : v;
+      t.appendChild(td);
+    });
+    tb.appendChild(t);
+  });
+  host.appendChild(tb);
+  if(foot){
+    const tf = el("tfoot"), r = el("tr");
+    foot.forEach(c => { const td = el("td", c.num ? "num" : ""); td.textContent = c.v;
+      if(c.span) td.colSpan = c.span; r.appendChild(td); });
+    tf.appendChild(r); host.appendChild(tf);
+  }
+}
+function sortable(host, cols, getRows, render){
+  host.addEventListener("click", e => {
+    const th = e.target.closest("th"); if(!th || !th.dataset.k) return;
+    const k = th.dataset.k;
+    const dir = th.dataset.dir === "desc" ? "asc" : "desc";
+    host.querySelectorAll("th").forEach(x => x.removeAttribute("data-dir"));
+    th.dataset.dir = dir;
+    render(k, dir);
+  });
+}
+function cmp(k, dir){
+  return (a,b) => {
+    let x = a[k], y = b[k];
+    if(x === null || x === undefined) x = dir === "desc" ? -Infinity : Infinity;
+    if(y === null || y === undefined) y = dir === "desc" ? -Infinity : Infinity;
+    if(typeof x === "string") return dir === "desc" ? String(y).localeCompare(x) : x.localeCompare(String(y));
+    return dir === "desc" ? y - x : x - y;
+  };
+}
+function csv(rows){ return rows.map(r => r.map(v => {
+  const s = v === null || v === undefined ? "" : String(v);
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+}).join(",")).join("\r\n"); }
+function download(name, text){
+  const b = new Blob([text], {type:"text/csv;charset=utf-8"});
+  const a = el("a"); a.href = URL.createObjectURL(b); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
+}
+
+/* ---------------------------------------------------------------- render */
+const URG_CLS = {Critical:"b-crit", Urgent:"b-warn", Soon:"b-ok"};
+function badge(u){ return u ? `<span class="badge ${URG_CLS[u]}">${u}</span>` : "—"; }
+
+function renderHeader(){
+  $("#hdrWindow").textContent = D.dates[0] + " → " + D.dates[D.dates.length-1];
+  $("#hdrDays").textContent   = D.dates.length;
+  $("#pillReorder").textContent = S.reorder_count;
+  $("#pillReorder").className = "pill" + (S.critical > 0 ? " alert" : "");
+  $("#pillDead").textContent = S.dead_count;
+  $("#pillUser").textContent = userRows.length;
+}
+
+function kpi(host, items){
+  host.innerHTML = "";
+  items.forEach(i => host.appendChild(el("div", "kpi " + (i.c||""),
+    `<div class="lab">${esc(i.lab)}</div><div class="val">${i.val}</div><div class="note">${i.note}</div>`)));
+}
+
+function renderOverview(){
+  kpi($("#kpis"), [
+    {lab:"Revenue, data window", val:inrK(S.revenue), note:`${num(S.units_sold)} units across ${S.skus} parts`},
+    {lab:"Stock on hand, at cost", val:inrK(S.inventory_at_cost), note:`${num(S.units_in_stock)} units`, c:"k-mag"},
+    {lab:"Sold in last 30 days", val:S.sold_30d + " / " + S.skus, note:`${S.no_sale_30d} parts had no sale at all`},
+    {lab:"Needs reordering now", val:S.reorder_count, note:`${S.critical} will run out before stock lands`, c:S.critical?"k-crit":"k-ok"},
+    {lab:"Tied up in dead stock", val:inrK(S.dead_tied), note:`${S.dead_count} parts, no sale in 60+ days`, c:"k-warn"},
+    {lab:"Ran out in last 30 days", val:S.stockouts_30d, note:"parts that hit zero stock", c:S.stockouts_30d?"k-warn":"k-ok"},
+  ]);
+  lineChart($("#chRevenue"), ANALYTICS.dailyRevenue(D, M, 90));
+  barChart($("#chCategory"),
+    ANALYTICS.categoryRevenue(M).map(([c,v]) => ({label:c, value:v})), inrK);
+
+  // stock value split by how fast it is moving
+  const buckets = [
+    {label:"Moving well", test:m => m.u30 > 0 && (m.cover === null || m.cover >= m.lead + 14), col:"#0E8A74"},
+    {label:"Running low", test:m => m.urg !== null, col:"#C77A14"},
+    {label:"Slow, under 60d", test:m => m.u30 === 0 && !m.dead, col:"#9FD6EA"},
+    {label:"Dead, 60d+", test:m => m.dead, col:"#C62828"},
+  ];
+  const used = new Set(); const data = [];
+  buckets.forEach(b => {
+    let v = 0, n = 0;
+    M.forEach(m => { if(!used.has(m.sku) && b.test(m)){ used.add(m.sku); v += m.tied; n++; } });
+    data.push({label:`${b.label} (${n})`, value:v, col:b.col});
+  });
+  barChart($("#chHealth"), data, inrK, d => d.col);
+  const deadPct = S.inventory_at_cost ? S.dead_tied / S.inventory_at_cost * 100 : 0;
+  $("#healthNote").innerHTML =
+    `<b>${deadPct.toFixed(1)}%</b> of the money sitting in stock is in parts that have not sold for 60 days ` +
+    `(${inr(S.dead_tied)} of ${inr(S.inventory_at_cost)}). That is cash that could be funding the ` +
+    `${S.reorder_count} parts that are about to run out.`;
+}
+
+let reorderTier = "All", reorderQ = "", reorderSort = {k:null, dir:"desc"};
+function reorderRows(){
+  let r = ANALYTICS.reorderList(M);
+  if(reorderTier !== "All") r = r.filter(m => m.urg === reorderTier);
+  if(reorderQ){ const q = reorderQ.toLowerCase();
+    r = r.filter(m => (m.sku+" "+m.name+" "+m.cat).toLowerCase().includes(q)); }
+  if(reorderSort.k) r = [...r].sort(cmp(reorderSort.k, reorderSort.dir));
+  return r;
+}
+const REORDER_COLS = [
+  {h:"SKU", k:"sku", cls:"sku"},
+  {h:"Part", k:"name", cls:"nm"},
+  {h:"Urgency", k:"urg", html:true, f:m=>badge(m.urg)},
+  {h:"Stock", k:"stock", num:true, f:m=>num(m.stock)},
+  {h:"Sales/day", k:"v30", num:true, f:m=>m.v30.toFixed(2)},
+  {h:"Cover", k:"cover", num:true, f:m=>n1(m.cover)+"d"},
+  {h:"Lead", k:"lead", num:true, f:m=>m.lead+"d"},
+  {h:"Reorder pt", k:"rop", num:true, f:m=>Math.round(m.rop)},
+  {h:"Order qty", k:"order", num:true, f:m=>num(m.order)},
+  {h:"Order value", k:"ordv", num:true, f:m=>inr(m.order*m.cost)},
+];
+function renderReorder(){
+  const all = ANALYTICS.reorderList(M);
+  kpi($("#reorderKpis"), [
+    {lab:"Parts to reorder", val:S.reorder_count, note:`${S.critical} critical · ${S.urgent} urgent · ${S.soon} soon`,
+     c:S.critical?"k-crit":"k-ok"},
+    {lab:"Cost of the order", val:inrK(S.order_value), note:"at your cost price, all lines"},
+    {lab:"Most urgent", val: all.length ? all[0].sku : "—",
+     note: all.length ? esc(all[0].name) + " · " + n1(all[0].cover) + "d cover vs " + all[0].lead + "d lead" : "nothing is running short",
+     c:"k-warn"},
+  ]);
+  const chips = $("#reorderChips"); chips.innerHTML = "";
+  ["All","Critical","Urgent","Soon"].forEach(t => {
+    const n = t === "All" ? all.length : all.filter(m => m.urg === t).length;
+    const b = el("button","chip", `${t} <b>${n}</b>`);
+    b.setAttribute("aria-pressed", String(reorderTier === t));
+    b.onclick = () => { reorderTier = t; renderReorder(); };
+    chips.appendChild(b);
+  });
+  const rows = reorderRows();
+  const tv = rows.reduce((s,m)=>s+m.order*m.cost, 0);
+  table($("#reorderTbl"), REORDER_COLS, rows.map(m => ({...m, ordv:m.order*m.cost})),
+    [{v:"Total, lines shown", span:8}, {v:num(rows.reduce((s,m)=>s+m.order,0)), num:true}, {v:inr(tv), num:true}]);
+}
+
+let topMode = "units";
+let catFilter = "All", moversQ = "", moversSort = {k:"u30", dir:"desc"};
+const MOVERS_COLS = [
+  {h:"SKU", k:"sku", cls:"sku"},
+  {h:"Part", k:"name", cls:"nm"},
+  {h:"Category", k:"cat"},
+  {h:"Sold 7d", k:"u7", num:true},
+  {h:"Sold 30d", k:"u30", num:true},
+  {h:"Prior 30d", k:"prev30", num:true},
+  {h:"Change", k:"trend", num:true, html:true,
+   f:m=> m.trend === null ? "—" :
+     `<span class="${m.trend>=0?"delta-up":"delta-dn"}">${m.trend>=0?"+":""}${m.trend.toFixed(0)}%</span>`},
+  {h:"Revenue 30d", k:"rev30", num:true, f:m=>inr(m.u30*m.price)},
+  {h:"Stock", k:"stock", num:true},
+  {h:"Cover", k:"cover", num:true, f:m=>n1(m.cover)+(m.cover===null?"":"d")},
+  {h:"Status", k:"urg", html:true, f:m=> m.dead ? '<span class="badge b-mag">Dead</span>' : badge(m.urg)},
+];
+function moversRows(){
+  let r = M.map(m => ({...m, rev30:m.u30*m.price}));
+  if(catFilter !== "All") r = r.filter(m => m.cat === catFilter);
+  if(moversQ){ const q = moversQ.toLowerCase();
+    r = r.filter(m => (m.sku+" "+m.name+" "+m.cat).toLowerCase().includes(q)); }
+  return r.sort(cmp(moversSort.k, moversSort.dir));
+}
+function renderMovers(){
+  const chips = $("#topChips"); chips.innerHTML = "";
+  [["units","Units sold"],["revenue","Revenue"]].forEach(([k,lab]) => {
+    const b = el("button","chip",lab); b.setAttribute("aria-pressed", String(topMode === k));
+    b.onclick = () => { topMode = k; renderMovers(); }; chips.appendChild(b);
+  });
+  const top = [...M].sort((a,b) => topMode === "units" ? b.u30-a.u30 : (b.u30*b.price)-(a.u30*a.price)).slice(0,10);
+  barChart($("#chTop"), top.map(m => ({label:m.name.length>26?m.name.slice(0,25)+"…":m.name,
+                                       value: topMode === "units" ? m.u30 : m.u30*m.price})),
+           topMode === "units" ? num : inrK);
+
+  const up = ANALYTICS.trendList(M, "up").slice(0,5);
+  const dn = ANALYTICS.trendList(M, "down").slice(0,5).reverse();
+  divergingChart($("#chTrend"), up.concat(dn).map(m => ({
+    label: m.name.length>26?m.name.slice(0,25)+"…":m.name, value:m.trend, prev:m.prev30, now:m.u30 })));
+
+  const cc = $("#catChips"); cc.innerHTML = "";
+  ["All", ...new Set(M.map(m=>m.cat))].forEach(c => {
+    const b = el("button","chip",c); b.setAttribute("aria-pressed", String(catFilter === c));
+    b.onclick = () => { catFilter = c; renderMovers(); }; cc.appendChild(b);
+  });
+  const rows = moversRows();
+  table($("#moversTbl"), MOVERS_COLS, rows,
+    [{v:`${rows.length} parts shown`, span:4},
+     {v:num(rows.reduce((s,m)=>s+m.u30,0)), num:true},
+     {v:num(rows.reduce((s,m)=>s+m.prev30,0)), num:true}, {v:"", num:true},
+     {v:inr(rows.reduce((s,m)=>s+m.u30*m.price,0)), num:true},
+     {v:num(rows.reduce((s,m)=>s+m.stock,0)), num:true}, {v:""}, {v:""}]);
+  const th = $("#moversTbl").querySelector(`th[data-k="${moversSort.k}"]`);
+  if(th) th.dataset.dir = moversSort.dir;
+}
+
+function renderDead(){
+  const dead = ANALYTICS.deadList(M);
+  const so = M.filter(m => m.stockout_days > 0).sort((a,b)=>b.stockout_days-a.stockout_days);
+  kpi($("#deadKpis"), [
+    {lab:"Dead parts", val:S.dead_count, note:"no sale in 60 days or more", c:"k-warn"},
+    {lab:"Capital tied up", val:inrK(S.dead_tied),
+     note: S.inventory_at_cost ? (S.dead_tied/S.inventory_at_cost*100).toFixed(1)+"% of all stock value" : "—", c:"k-crit"},
+    {lab:"Biggest single item", val: dead.length ? inrK(dead[0].tied) : "—",
+     note: dead.length ? esc(dead[0].name) + " · " + dead[0].days_since + " days unsold" : "no dead stock", c:"k-mag"},
+  ]);
+  barChart($("#chDead"), dead.slice(0,10).map(m => ({
+    label: m.name.length>26?m.name.slice(0,25)+"…":m.name, value:m.tied })), inrK, () => "#C62828");
+  table($("#deadTbl"), [
+    {h:"SKU", k:"sku", cls:"sku"}, {h:"Part", k:"name", cls:"nm"}, {h:"Category", k:"cat"},
+    {h:"Stock", k:"stock", num:true}, {h:"Days unsold", k:"days_since", num:true},
+    {h:"Cost each", k:"cost", num:true, f:m=>inr(m.cost)},
+    {h:"Capital tied", k:"tied", num:true, f:m=>inr(m.tied)},
+  ], dead, [{v:`${dead.length} parts`, span:6}, {v:inr(S.dead_tied), num:true}]);
+  table($("#soTbl"), [
+    {h:"SKU", k:"sku", cls:"sku"}, {h:"Part", k:"name", cls:"nm"},
+    {h:"Days at zero stock", k:"stockout_days", num:true},
+    {h:"Sold 30d", k:"u30", num:true},
+    {h:"Stock now", k:"stock", num:true},
+  ], so);
+}
+
+function renderUpdate(){
+  const sel = $("#fSku");
+  if(!sel.options.length){
+    [...M].sort((a,b)=>a.sku.localeCompare(b.sku)).forEach(m => {
+      const o = el("option"); o.value = m.sku; o.textContent = `${m.sku} — ${m.name}`; sel.appendChild(o);
+    });
+  }
+  if(!$("#fDate").value){
+    const last = new Date(D.dates[D.dates.length-1] + "T12:00:00");
+    last.setDate(last.getDate() + 1);
+    const p2 = n => String(n).padStart(2, "0");
+    // built from local parts: toISOString() would shift the day in any zone ahead of UTC
+    $("#fDate").value = `${last.getFullYear()}-${p2(last.getMonth()+1)}-${p2(last.getDate())}`;
+  }
+  const rows = [...userRows].sort((a,b) => b.date.localeCompare(a.date) || a.sku.localeCompare(b.sku));
+  table($("#userTbl"), [
+    {h:"Date", k:"date"}, {h:"SKU", k:"sku", cls:"sku"},
+    {h:"Part", k:"name", cls:"nm", f:r => (M.find(m=>m.sku===r.sku)||{}).name || "unknown SKU"},
+    {h:"Units sold", k:"units", num:true},
+    {h:"Closing stock", k:"stock", num:true, f:r => r.stock === "" || r.stock === null ? "derived" : r.stock},
+    {h:"", k:"x", sort:false, html:true, f:r => `<button class="btn danger mini" data-del="${r.date}|${r.sku}">Remove</button>`},
+  ], rows);
+  $("#userTbl").querySelectorAll("[data-del]").forEach(b => b.onclick = () => {
+    const [d,s] = b.dataset.del.split("|");
+    userRows = userRows.filter(r => !(r.date === d && r.sku === s));
+    saveUser(); renderAll();
+  });
+}
+
+function renderAll(){
+  recompute(); renderHeader();
+  renderOverview(); renderReorder(); renderMovers(); renderDead(); renderUpdate();
+}
+
+/* ---------------------------------------------------------------- tabs */
+document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
+  document.querySelectorAll(".tab").forEach(x => x.setAttribute("aria-selected", String(x === t)));
+  document.querySelectorAll(".panel-body").forEach(p => p.hidden = p.id !== "p-" + t.dataset.t);
+  window.scrollTo({top:0, behavior:"smooth"});
+});
+
+/* ---------------------------------------------------------------- inputs */
+$("#reorderSearch").oninput = e => { reorderQ = e.target.value; renderReorder(); };
+$("#moversSearch").oninput  = e => { moversQ  = e.target.value; renderMovers(); };
+sortable($("#reorderTbl"), REORDER_COLS, reorderRows, (k,dir) => { reorderSort = {k,dir};
+  const rows = reorderRows();
+  table($("#reorderTbl"), REORDER_COLS, rows.map(m=>({...m, ordv:m.order*m.cost})),
+    [{v:"Total, lines shown", span:8}, {v:num(rows.reduce((s,m)=>s+m.order,0)), num:true},
+     {v:inr(rows.reduce((s,m)=>s+m.order*m.cost,0)), num:true}]);
+  const th = $(`#reorderTbl th[data-k="${k}"]`); if(th) th.dataset.dir = dir;
+});
+sortable($("#moversTbl"), MOVERS_COLS, moversRows, (k,dir) => { moversSort = {k,dir}; renderMovers(); });
+
+function msg(host, cls, html){ const n = $(host); n.hidden = false; n.className = "note " + cls; n.innerHTML = html; }
+
+$("#fAdd").onclick = () => {
+  const date = $("#fDate").value, sku = $("#fSku").value;
+  const units = $("#fUnits").value, stock = $("#fStock").value;
+  if(!date) return msg("#formNote","warn","Pick a date first.");
+  if(!sku)  return msg("#formNote","warn","Pick a part first.");
+  const u = Number(units);
+  if(!Number.isFinite(u) || u < 0) return msg("#formNote","warn","Units sold must be zero or more.");
+  if(stock !== "" && (!Number.isFinite(Number(stock)) || Number(stock) < 0))
+    return msg("#formNote","warn","Closing stock must be zero or more, or left blank.");
+  const was = userRows.find(r => r.date === date && r.sku === sku);
+  userRows = userRows.filter(r => !(r.date === date && r.sku === sku));
+  userRows.push({date, sku, units:u, stock: stock === "" ? "" : Number(stock)});
+  saveUser(); renderAll();
+  document.querySelector('.tab[data-t="update"]').click();
+  msg("#formNote","good", (was ? "Replaced" : "Added") +
+      ` <b>${esc(sku)}</b> for <b>${esc(date)}</b> — ${u} unit${u===1?"":"s"} sold. All figures above have been recomputed.`);
+  $("#fUnits").value = 0; $("#fStock").value = "";
+};
+
+function parseCsv(text){
+  const lines = text.replace(/\r/g,"").split("\n").filter(l => l.trim() !== "");
+  if(!lines.length) return {rows:[], errors:["The file is empty."]};
+  const head = lines[0].toLowerCase().split(",").map(s => s.trim());
+  const ix = n => head.findIndex(h => h === n || h.replace(/[_\s]/g,"") === n.replace(/[_\s]/g,""));
+  const iD = ix("date"), iS = ix("sku"), iU = ix("units_sold"), iC = ix("closing_stock");
+  if(iD < 0 || iS < 0 || iU < 0)
+    return {rows:[], errors:["The file needs the columns date, sku and units_sold. Found: " + head.join(", ")]};
+  const known = new Set(M.map(m => m.sku));
+  const rows = [], errors = [], unknown = new Set();
+  lines.slice(1).forEach((l, i) => {
+    const c = l.split(",").map(s => s.trim());
+    const date = c[iD], sku = (c[iS]||"").toUpperCase(), u = Number(c[iU]);
+    const st = iC >= 0 && c[iC] !== undefined && c[iC] !== "" ? Number(c[iC]) : "";
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){ errors.push(`Row ${i+2}: "${date}" is not a date in YYYY-MM-DD form.`); return; }
+    if(!known.has(sku)){ unknown.add(sku); return; }
+    if(!Number.isFinite(u) || u < 0){ errors.push(`Row ${i+2}: units sold "${c[iU]}" is not a number.`); return; }
+    if(st !== "" && (!Number.isFinite(st) || st < 0)){ errors.push(`Row ${i+2}: closing stock "${c[iC]}" is not a number.`); return; }
+    rows.push({date, sku, units:u, stock:st});
+  });
+  if(unknown.size) errors.push(`Skipped ${unknown.size} unknown SKU${unknown.size===1?"":"s"}: ` +
+                               [...unknown].slice(0,6).join(", ") + (unknown.size>6 ? "…" : ""));
+  return {rows, errors};
+}
+function ingest(text, noteHost){
+  const {rows, errors} = parseCsv(text);
+  if(!rows.length){
+    msg(noteHost,"warn","<b>Nothing was added.</b><br>" + errors.map(esc).join("<br>"));
+    return;
+  }
+  let replaced = 0;
+  rows.forEach(r => {
+    if(userRows.some(x => x.date === r.date && x.sku === r.sku)) replaced++;
+    userRows = userRows.filter(x => !(x.date === r.date && x.sku === r.sku));
+    userRows.push(r);
+  });
+  saveUser(); renderAll();
+  msg(noteHost, errors.length ? "warn" : "good",
+      `<b>Added ${rows.length} row${rows.length===1?"":"s"}</b>` +
+      (replaced ? ` (${replaced} replaced an existing day)` : "") +
+      `, covering ${new Set(rows.map(r=>r.date)).size} date(s) and ${new Set(rows.map(r=>r.sku)).size} part(s). ` +
+      `All figures have been recomputed.` +
+      (errors.length ? "<br><br><b>Also noted:</b><br>" + errors.map(esc).join("<br>") : ""));
+}
+$("#drop").onclick = () => $("#file").click();
+$("#drop").ondragover = e => { e.preventDefault(); $("#drop").classList.add("over"); };
+$("#drop").ondragleave = () => $("#drop").classList.remove("over");
+$("#drop").ondrop = e => { e.preventDefault(); $("#drop").classList.remove("over");
+  const f = e.dataTransfer.files[0]; if(f) f.text().then(t => ingest(t, "#uploadNote")); };
+$("#file").onchange = e => { const f = e.target.files[0];
+  if(f) f.text().then(t => ingest(t, "#uploadNote")); e.target.value = ""; };
+$("#importBtn").onclick = () => $("#importFile").click();
+$("#importFile").onchange = e => { const f = e.target.files[0];
+  if(f) f.text().then(t => ingest(t, "#uploadNote")); e.target.value = ""; };
+
+$("#resetUser").onclick = () => {
+  if(!userRows.length) return;
+  if(!confirm(`Remove all ${userRows.length} rows you have added? The supplied history stays.`)) return;
+  userRows = []; saveUser(); renderAll();
+};
+
+$("#dlUser").onclick = () => download("balar_my_entries.csv",
+  csv([["date","sku","units_sold","closing_stock"], ...userRows.map(r => [r.date, r.sku, r.units, r.stock])]));
+$("#dlReorder").onclick = () => download("balar_purchase_list.csv",
+  csv([["sku","part","category","urgency","stock","sales_per_day","days_cover","lead_days","reorder_point","order_qty","unit_cost_inr","order_value_inr"],
+       ...reorderRows().map(m => [m.sku, m.name, m.cat, m.urg, m.stock, m.v30.toFixed(3),
+            m.cover===null?"":m.cover.toFixed(1), m.lead, Math.round(m.rop), m.order, m.cost, m.order*m.cost])]));
+$("#dlDead").onclick = () => download("balar_dead_stock.csv",
+  csv([["sku","part","category","stock","days_since_last_sale","unit_cost_inr","capital_tied_inr"],
+       ...ANALYTICS.deadList(M).map(m => [m.sku, m.name, m.cat, m.stock, m.days_since, m.cost, m.tied])]));
+$("#dlMovers").onclick = () => download("balar_sales_30d.csv",
+  csv([["sku","part","category","sold_7d","sold_30d","prior_30d","change_pct","revenue_30d_inr","stock","days_cover","status"],
+       ...moversRows().map(m => [m.sku, m.name, m.cat, m.u7, m.u30, m.prev30,
+            m.trend===null?"":m.trend.toFixed(1), m.u30*m.price, m.stock,
+            m.cover===null?"":m.cover.toFixed(1), m.dead ? "Dead" : (m.urg||"OK")])]));
+
+/* ---------------------------------------------------------------- ask */
+function askNow(){
+  const q = $("#q").value.trim();
+  if(!q){ $("#qOut").innerHTML = ""; return; }
+  $("#qOut").innerHTML = CONSOLE.answer(q, {D, M, S, ANALYTICS, fmt:{inr, inrK, num, n1, esc, badge}});
+}
+$("#qGo").onclick = askNow;
+$("#q").onkeydown = e => { if(e.key === "Enter") askNow(); };
+const chipsBox = $("#qChips");
+CONSOLE.CHIPS.forEach(c => { const b = el("button","chip",esc(c));
+  b.onclick = () => { $("#q").value = c; askNow(); }; chipsBox.appendChild(b); });
+
+renderAll();
+</script>
+</body>
+</html>

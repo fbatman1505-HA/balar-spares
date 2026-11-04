@@ -1,0 +1,81 @@
+sku,product_name,category,unit_price_inr,unit_cost_inr,lead_time_days
+BLR-1000,Brake Pad Set — i10 Grand,Brakes,1255,825,21
+BLR-1001,Brake Disc Rotor — Santro,Brakes,3295,2085,18
+BLR-1002,Brake Shoe Set — Scorpio,Brakes,795,480,7
+BLR-1003,Brake Caliper Kit — XUV300,Brakes,4085,2465,10
+BLR-1004,Master Cylinder Kit — Alto 800,Brakes,1805,1115,14
+BLR-1005,Oil Filter — Kwid,Filters,325,205,14
+BLR-1006,Air Filter — Kwid,Filters,510,380,21
+BLR-1007,Cabin AC Filter — Swift,Filters,570,395,10
+BLR-1008,Fuel Filter — Venue,Filters,520,345,14
+BLR-1009,Diesel Water Separator — Alto 800,Filters,1045,795,14
+BLR-1010,Headlamp Assembly — i20,Lighting,5580,3630,21
+BLR-1011,Tail Lamp Unit — Swift,Lighting,2640,1690,14
+BLR-1012,Fog Lamp Kit — WagonR,Lighting,2400,1510,14
+BLR-1013,LED Indicator Set — Tiago,Lighting,625,440,18
+BLR-1014,Number Plate Lamp — Dzire,Lighting,220,160,10
+BLR-1015,Ignition Coil — Scorpio,Electricals,1400,940,21
+BLR-1016,Spark Plug Set — i10 Grand,Electricals,810,555,7
+BLR-1017,Starter Motor Brush — Punch,Electricals,315,210,10
+BLR-1018,Alternator Belt — i10 Grand,Electricals,800,520,10
+BLR-1019,Horn Set — Amaze,Electricals,740,545,21
+BLR-1020,Shock Absorber — Creta,Suspension,2365,1535,18
+BLR-1021,Coil Spring — Venue,Suspension,2540,1690,7
+BLR-1022,Leaf Spring Bush — Baleno,Suspension,265,175,5
+BLR-1023,Ball Joint — Kwid,Suspension,705,500,10
+BLR-1024,Tie Rod End — Tiago,Suspension,645,485,5
+BLR-1025,Timing Belt Kit — Alto 800,Engine,3425,2395,10
+BLR-1026,Water Pump — Kwid,Engine,2020,1540,14
+BLR-1027,Radiator Hose Set — Ertiga,Engine,830,525,14
+BLR-1028,Cylinder Head Gasket — WagonR,Engine,1585,1230,10
+BLR-1029,Engine Mount — Bolero,Engine,1115,815,18
+BLR-1030,Side Mirror Assembly — Bolero,Body,1665,1130,10
+BLR-1031,Door Handle Set — Swift,Body,670,485,14
+BLR-1032,Bumper Grille — Swift,Body,1950,1485,14
+BLR-1033,Wiper Blade Pair — Ertiga,Body,580,390,10
+BLR-1034,Mud Flap Set — WagonR,Body,490,365,18
+BLR-1035,Engine Oil 3.5L — XUV300,Lubricants,2105,1445,14
+BLR-1036,Gear Oil 1L — Dzire,Lubricants,490,335,7
+BLR-1037,Brake Fluid DOT4 — Creta,Lubricants,315,215,10
+BLR-1038,Coolant 1L — Alto 800,Lubricants,275,170,7
+BLR-1039,Grease Cartridge — Swift,Lubricants,225,140,10
+BLR-1040,Wheel Bearing Kit — Scorpio,Bearings,1520,930,14
+BLR-1041,Clutch Release Bearing — Baleno,Bearings,1045,665,21
+BLR-1042,Hub Assembly — Baleno,Bearings,3395,2640,14
+BLR-1043,Pulley Bearing — Punch,Bearings,700,460,5
+BLR-1044,Idler Bearing — Alto 800,Bearings,515,385,18
+BLR-1045,Car Cover — Alto 800,Accessories,1300,805,5
+BLR-1046,Seat Cover Set — WagonR,Accessories,2345,1630,10
+BLR-1047,Floor Mat Set — Celerio,Accessories,1175,905,18
+BLR-1048,Steering Cover — Tiago,Accessories,370,230,14
+BLR-1049,Dashboard Polish — Celerio,Accessories,255,175,5
+BLR-1050,Floor Mat Set — Ertiga,Accessories,980,600,10
+BLR-1051,Wheel Bearing Kit — Swift,Bearings,1515,1165,5
+BLR-1052,LED Indicator Set — i10 Grand,Lighting,680,510,14
+BLR-1053,Shock Absorber — XUV300,Suspension,1970,1450,18
+BLR-1054,Ball Joint — Ertiga,Suspension,795,525,7
+BLR-1055,Door Handle Set — Alto 800,Body,815,610,18
+BLR-1056,Brake Fluid DOT4 — i20,Lubricants,295,205,21
+BLR-1057,Brake Disc Rotor — Dzire,Brakes,3185,2150,10
+BLR-1058,Number Plate Lamp — Dzire,Lighting,255,195,18
+BLR-1059,Tie Rod End — XUV300,Suspension,660,410,21
+BLR-1060,Brake Pad Set — Bolero,Brakes,1145,810,7
+BLR-1061,Mud Flap Set — Santro,Body,405,275,7
+BLR-1062,Pulley Bearing — i20,Bearings,705,470,21
+BLR-1063,Master Cylinder Kit — Amaze,Brakes,1475,1145,14
+BLR-1064,Engine Mount — i10 Grand,Engine,1260,850,14
+BLR-1065,Steering Cover — Ertiga,Accessories,410,300,7
+BLR-1066,Hub Assembly — Alto 800,Bearings,2985,2155,18
+BLR-1067,Cylinder Head Gasket — Swift,Engine,1685,1030,7
+BLR-1068,Headlamp Assembly — i20,Lighting,5880,3735,21
+BLR-1069,Radiator Hose Set — WagonR,Engine,1015,715,10
+BLR-1070,Starter Motor Brush — Punch,Electricals,310,190,10
+BLR-1071,Ignition Coil — i10 Grand,Electricals,1370,960,10
+BLR-1072,Leaf Spring Bush — Bolero,Suspension,315,225,14
+BLR-1073,Cabin AC Filter — Punch,Filters,525,400,7
+BLR-1074,Brake Caliper Kit — Tiago,Brakes,4205,3245,10
+BLR-1075,Coolant 1L — WagonR,Lubricants,305,225,14
+BLR-1076,Diesel Water Separator — Bolero,Filters,1040,785,10
+BLR-1077,Side Mirror Assembly — Ertiga,Body,1660,1290,14
+BLR-1078,Car Cover — Bolero,Accessories,1190,760,10
+BLR-1079,Air Filter — Punch,Filters,500,320,18
