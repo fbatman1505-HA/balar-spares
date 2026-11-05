@@ -37,8 +37,10 @@ date,sku,units_sold,closing_stock
 2026-11-05,BLR-1011,7,
 ```
 
-Closing stock may be left blank — it is derived from the previous day's balance less what
-sold. Re-entering a date that already exists replaces that day rather than adding to it.
+**Leaving closing stock blank does not mean "no change".** It means the figure is derived:
+yesterday's stock less whatever sold. So a row with 0 sold and a blank stock box changes
+nothing. If you have received new stock, type the new shelf count into the stock box.
+Re-entering a date that already exists replaces that day rather than adding to it.
 `balar_daily_update_template.csv` in this repo is a starting point.
 
 ## Data

@@ -130,6 +130,8 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--cyan-l); outline
 .note b{color:var(--ink)}
 .note.warn{background:#FDF3E2; border-color:#EFD9AE}
 .note.good{background:#E3F3EF; border-color:#B9DDD5}
+.hint{font-size:12.5px; color:var(--ink-2); margin-top:9px}
+.hint b{color:var(--ink); font-variant-numeric:tabular-nums}
 .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:11.5px}
 .empty{padding:28px 10px; text-align:center; color:var(--ink-3); font-size:13px}
 
@@ -276,9 +278,10 @@ footer{text-align:center; font-size:11.5px; color:var(--ink-3); padding:8px 16px
       <div><label for="fDate">Date</label><input type="date" id="fDate"></div>
       <div><label for="fSku">Part</label><select id="fSku"></select></div>
       <div><label for="fUnits">Units sold</label><input type="number" id="fUnits" min="0" step="1" value="0"></div>
-      <div><label for="fStock">Closing stock</label><input type="number" id="fStock" min="0" step="1" placeholder="optional"></div>
+      <div><label for="fStock">Stock left at end of day</label><input type="number" id="fStock" min="0" step="1" placeholder="blank = no change"></div>
       <div><button class="btn" id="fAdd">Add row</button></div>
     </div>
+    <div class="hint" id="skuHint"></div>
     <div class="note" id="formNote" hidden></div>
   </div>
 
@@ -1291,6 +1294,7 @@ function renderUpdate(){
     // built from local parts: toISOString() would shift the day in any zone ahead of UTC
     $("#fDate").value = `${last.getFullYear()}-${p2(last.getMonth()+1)}-${p2(last.getDate())}`;
   }
+  skuHint();
   const rows = [...userRows].sort((a,b) => b.date.localeCompare(a.date) || a.sku.localeCompare(b.sku));
   table($("#userTbl"), [
     {h:"Date", k:"date"}, {h:"SKU", k:"sku", cls:"sku"},
@@ -1306,6 +1310,18 @@ function renderUpdate(){
   });
 }
 
+/* Says what the selected part holds right now, so "stock left at end of day" has
+   a number to be measured against rather than being guessed at or left blank. */
+function skuHint(){
+  const m = M.find(x => x.sku === $("#fSku").value);
+  if(!m){ $("#skuHint").innerHTML = ""; return; }
+  $("#skuHint").innerHTML =
+    `<b>${esc(m.sku)}</b> currently shows <b>${num(m.stock)}</b> in stock` +
+    (m.v30 > 0 ? `, selling about <b>${m.v30.toFixed(2)}</b> a day` : ", with no sales in the last 30 days") +
+    `. Received new stock? Put the new shelf count in the last box. Leave it blank and it is ` +
+    `carried forward from yesterday less whatever sold, so entering 0 sold with a blank box changes nothing.`;
+}
+
 function renderAll(){
   recompute(); renderHeader();
   renderOverview(); renderReorder(); renderMovers(); renderDead(); renderUpdate();
@@ -1319,6 +1335,7 @@ document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
 });
 
 /* ---------------------------------------------------------------- inputs */
+$("#fSku").onchange = skuHint;
 $("#reorderSearch").oninput = e => { reorderQ = e.target.value; renderReorder(); };
 $("#moversSearch").oninput  = e => { moversQ  = e.target.value; renderMovers(); };
 sortable($("#reorderTbl"), REORDER_COLS, reorderRows, (k,dir) => { reorderSort = {k,dir};
@@ -1344,10 +1361,18 @@ $("#fAdd").onclick = () => {
   const was = userRows.find(r => r.date === date && r.sku === sku);
   userRows = userRows.filter(r => !(r.date === date && r.sku === sku));
   userRows.push({date, sku, units:u, stock: stock === "" ? "" : Number(stock)});
+  const before = (M.find(x => x.sku === sku) || {}).stock;
   saveUser(); renderAll();
   document.querySelector('.tab[data-t="update"]').click();
-  msg("#formNote","good", (was ? "Replaced" : "Added") +
-      ` <b>${esc(sku)}</b> for <b>${esc(date)}</b> — ${u} unit${u===1?"":"s"} sold. All figures above have been recomputed.`);
+  const after = (M.find(x => x.sku === sku) || {}).stock;
+  const changed = after !== before;
+  msg("#formNote", changed ? "good" : "warn",
+      (was ? "Replaced" : "Added") + ` <b>${esc(sku)}</b> for <b>${esc(date)}</b> — ${u} unit${u===1?"":"s"} sold. ` +
+      (changed
+        ? `Stock is now <b>${num(after)}</b> (was ${num(before)}). Every figure has been recomputed.`
+        : `<b>Stock is unchanged at ${num(after)}.</b> You left the stock box blank and entered 0 sold, ` +
+          `so there was nothing to change. If you have received new stock, type the new shelf count ` +
+          `into the last box and add the row again.`));
   $("#fUnits").value = 0; $("#fStock").value = "";
 };
 
