@@ -12,7 +12,7 @@ slower than last month, and which stock has stopped moving.
 |---|---|
 | Overview | How is the business doing, and where is the money stuck? |
 | Reorder | What do I buy this week, in what quantity, at what cost? |
-| Buying | Is the supplier's quote worth accepting, and does the selling price still work? |
+| Buying | Is the supplier's quote worth accepting, does the selling price still work, and what goes to the supplier? |
 | What's Selling | What is moving, accelerating, or fading? |
 | Dead Stock | What has stopped selling, and how much capital is in it? |
 | Update Data | Add today's figures, by form or by CSV. |
@@ -36,11 +36,19 @@ Each line is routed to automatic sending or to manual approval by order value. T
 margin, the price ceiling and the auto-send limit are inputs on the page, not constants in the
 code: change one and every line re-decides.
 
-**Nothing is sent.** The WhatsApp step is drafted and simulated — the outbox records what would
-go out. Proactive business-initiated WhatsApp messages require the WhatsApp Business Cloud API,
-a Meta-approved message template and a server; automating the personal app is against its terms
-of service. A repriced line is also only half done when the order goes out, because the Amazon
-listing still has to be changed by hand, so the outbox carries that as work outstanding.
+**The message is real; the send is yours.** The page builds a `wa.me` link and opens WhatsApp
+with the message already written, against the supplier number you set under *Who you order from*.
+You press send. Numbers are stored in your own browser, never in this file and never on a server,
+and the six shipped with the demo are invented and blocked from sending until you replace them.
+
+It stops short of sending by itself on purpose. Automatic sending needs the WhatsApp Business
+Cloud API, which requires a phone number *other than your own* — a number registered to that API
+can no longer be used with the regular WhatsApp app — plus Meta business verification, templates
+approved in advance, and a server to hold the access token, which a single public HTML file
+cannot safely do. Libraries that drive the ordinary app are against WhatsApp's terms of service.
+
+A repriced line is also only half done when the order goes out, because the Amazon listing still
+has to be changed by hand, so the outbox carries that as work outstanding.
 
 ## How it works
 

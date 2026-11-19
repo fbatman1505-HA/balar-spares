@@ -156,8 +156,15 @@ table.work td .mute{color:var(--ink-3); font-weight:400}
 .msgbox{border:1px solid var(--line); border-radius:var(--r); overflow:hidden; background:var(--panel)}
 .msghd{font-size:11.5px; font-weight:600; padding:7px 11px; background:var(--cyan-xl);
   color:var(--cyan-d); border-bottom:1px solid var(--line)}
-.msgbox pre{margin:0; padding:11px 13px; font-size:12px; line-height:1.55; white-space:pre-wrap;
+.msgbox textarea{display:block; width:100%; box-sizing:border-box; border:none; resize:vertical;
+  min-height:190px; background:transparent; margin:0; padding:11px 13px; font-size:12px; line-height:1.55;
   font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; color:var(--ink)}
+.msgbox textarea:focus{outline:none; box-shadow:inset 0 0 0 2px var(--cyan-xl)}
+input.wanum{width:170px; font:inherit; font-size:12.5px; font-variant-numeric:tabular-nums;
+  padding:5px 8px; border:1px solid var(--line); border-radius:6px;
+  background:var(--surface); color:var(--ink)}
+input.wanum:focus{outline:none; border-color:var(--cyan); box-shadow:0 0 0 3px var(--cyan-xl)}
+input.wanum.bad{border-color:var(--mag); background:#FEF2F8}
 tr.sel td{background:var(--cyan-xl)}
 
 /* ---------------------------------------------------------------- ask tab */
@@ -245,11 +252,11 @@ footer{text-align:center; font-size:11.5px; color:var(--ink-3); padding:8px 16px
 <!-- ======================================================== BUYING -->
 <section class="panel-body" id="p-buy" role="tabpanel" aria-labelledby="t-buy" hidden>
 
-  <div class="note warn" style="margin:0 0 16px">
-    <b>Nothing is sent from this page.</b> Every WhatsApp message below is drafted and shown to you.
-    Sending is simulated — the outbox records what <i>would</i> go out, so the decision can be
-    checked before any money is committed. Supplier names, numbers, past prices and quotes are
-    invented for this demonstration.
+  <div class="note" style="margin:0 0 16px">
+    <b>This page hands the message to WhatsApp — it does not send it.</b> Clicking send opens
+    WhatsApp with the message already written, on your own number, and you press send there.
+    Nothing leaves this page on its own and no part of your data goes to a server.
+    <span id="demoWarn"></span>
   </div>
 
   <div class="kpis" id="buyKpis"></div>
@@ -281,6 +288,16 @@ footer{text-align:center; font-size:11.5px; color:var(--ink-3); padding:8px 16px
   </div>
 
   <div class="card">
+    <h2>Who you order from</h2>
+    <p class="sub">
+      The number each message opens against. Type the supplier's real WhatsApp number here —
+      with or without +91, spaces and dashes are ignored. Saved in this browser only.
+    </p>
+    <div class="tblwrap"><table id="supTbl"></table></div>
+    <div class="btnrow"><button class="btn sec mini" id="supReset">Restore the demo numbers</button></div>
+  </div>
+
+  <div class="card">
     <h2>Purchase decisions</h2>
     <p class="sub">
       One line for every part the Reorder tab says is running short. The quote is compared against
@@ -307,11 +324,12 @@ footer{text-align:center; font-size:11.5px; color:var(--ink-3); padding:8px 16px
         <table class="work" id="bdMargin"></table>
       </div>
       <div>
-        <div class="worklabel">The message that would go out</div>
-        <div class="msgbox"><div class="msghd" id="bdTo"></div><pre id="bdMsg"></pre></div>
+        <div class="worklabel">The message — edit it before you send if you want</div>
+        <div class="msgbox"><div class="msghd" id="bdTo"></div><textarea id="bdMsg" spellcheck="false"></textarea></div>
         <div class="btnrow" style="margin-top:12px">
           <button class="btn" id="bdSend"></button>
-          <button class="btn sec" id="bdCopy">Copy message</button>
+          <button class="btn sec" id="bdCopy">Copy</button>
+          <button class="btn sec" id="bdRevert">Undo my edits</button>
         </div>
         <div class="note" id="bdNote"></div>
       </div>
@@ -320,9 +338,10 @@ footer{text-align:center; font-size:11.5px; color:var(--ink-3); padding:8px 16px
 
   <div class="card">
     <h2>Outbox</h2>
-    <p class="sub">A record of every message approved in this session. Simulated — nothing left this page.
-      A repriced line is only half done when the order goes out: the Amazon listing still has to be
-      changed by hand, so it is carried here as work outstanding.</p>
+    <p class="sub">Every message you have opened in WhatsApp from this page. Whether it was actually
+      sent is recorded in WhatsApp, not here — this is a list of what you handed over, not proof of
+      delivery. A repriced line is also only half done when the order goes out: the Amazon listing
+      still has to be changed by hand, so it is carried here as work outstanding.</p>
     <div class="tblwrap"><table id="outboxTbl" data-empty="Nothing approved yet."></table></div>
     <div class="btnrow" style="margin-top:14px">
       <button class="btn sec" id="obClear">Clear outbox</button>
@@ -1531,8 +1550,80 @@ const DEFAULTS = {t: PROCDATA.fees.target_margin_pct,
                   r: PROCDATA.fees.max_price_rise_pct,
                   a: PROCDATA.fees.auto_approve_below_inr};
 let policy = {...DEFAULTS};
-let buyFilter = "All", buySel = null, outbox = [];
+let buyFilter = "All", buySel = null, outbox = [], edited = {};
 let REVIEW = [];
+
+/* Supplier WhatsApp numbers live in this browser, never in the file and never on a
+   server. The numbers shipped with the demo are invented, so they are flagged until
+   they are replaced. */
+const LS_SUP = "balar.supplierNumbers.v1";
+let supNums = {};
+try { supNums = JSON.parse(localStorage.getItem(LS_SUP) || "{}"); } catch(e){ supNums = {}; }
+function saveSup(){ try { localStorage.setItem(LS_SUP, JSON.stringify(supNums)); } catch(e){} }
+function supNum(id){
+  const s = PROCDATA.suppliers.find(x => x.id === id);
+  return supNums[id] !== undefined ? supNums[id] : (s ? s.wa : "");
+}
+
+/* wa.me wants digits only, in international form. Indians write their number six
+   different ways, so take any of them and work out what was meant rather than
+   refusing the input. */
+function waParse(raw){
+  let d = String(raw || "").replace(/\D/g, "");
+  if(d.length === 10 && /^[6-9]/.test(d))        d = "91" + d;        // bare mobile
+  else if(d.length === 11 && d.startsWith("0"))  d = "91" + d.slice(1); // STD prefix
+  else if(d.length === 13 && d.startsWith("091")) d = d.slice(1);
+  const demo = /^919000000\d{3}$/.test(d);   // +91 90000 000xx, 12 digits
+  const ok = d.length >= 10 && d.length <= 15 && !demo;
+  return {digits:d, ok, demo,
+          note: !d ? "No number" : demo ? "Demo number"
+              : d.length < 10 ? "Too short" : d.length > 15 ? "Too long" : ""};
+}
+
+const SUP_COLS = [
+  {h:"Supplier", k:"name", sort:false},
+  {h:"Covers", k:"cover", sort:false, f:s=>(COVERAGE[s.id]||[]).join(", ")},
+  {h:"Terms", k:"terms", sort:false},
+  {h:"WhatsApp number", k:"wa", sort:false, html:true, f:s=>{
+     const v = waParse(supNum(s.id));
+     return `<input class="wanum${v.ok ? "" : " bad"}" data-sup="${s.id}" ` +
+            `value="${esc(supNum(s.id))}" placeholder="+91 98765 43210" ` +
+            `aria-label="WhatsApp number for ${esc(s.name)}">`;
+   }},
+  {h:"", k:"st", sort:false, html:true, f:s=>supBadge(supNum(s.id))},
+];
+/* which categories each supplier covers — shown so the right number goes to the right firm */
+const COVERAGE = {};
+PROCDATA.history.forEach(([sku,,sid]) => {
+  const m = SEED.cat.find(c => c.s === sku); if(!m) return;
+  (COVERAGE[sid] = COVERAGE[sid] || []);
+  if(!COVERAGE[sid].includes(m.c)) COVERAGE[sid].push(m.c);
+});
+
+const supBadge = raw => {
+  const v = waParse(raw);
+  return v.ok ? `<span class="badge b-ok">Ready</span>`
+              : `<span class="badge b-warn">${esc(v.note)}</span>`;
+};
+function renderSuppliers(){
+  table($("#supTbl"), SUP_COLS, PROCDATA.suppliers);
+  $("#supTbl").querySelectorAll("input.wanum").forEach(inp => {
+    inp.oninput = () => {
+      supNums[inp.dataset.sup] = inp.value;
+      saveSup();
+      inp.classList.toggle("bad", !waParse(inp.value).ok);
+      inp.closest("tr").lastElementChild.innerHTML = supBadge(inp.value);
+      renderDetail(); renderDemoWarn();
+    };
+  });
+}
+function renderDemoWarn(){
+  const left = PROCDATA.suppliers.filter(s => !waParse(supNum(s.id)).ok).length;
+  $("#demoWarn").innerHTML = left
+    ? ` <b class="delta-dn">${left} of ${PROCDATA.suppliers.length} suppliers still have a ` +
+      `made-up number</b> — set the real ones under “Who you order from” before you send anything.`
+    : ` All ${PROCDATA.suppliers.length} supplier numbers are set.`;
+}
 
 function buyFees(){ return {...PROCDATA.fees, target_margin_pct: policy.t,
                             max_price_rise_pct: policy.r, auto_approve_below_inr: policy.a}; }
@@ -1618,6 +1709,7 @@ function renderBuy(){
       $("#buyDetail").scrollIntoView({behavior:"smooth", block:"nearest"}); };
   });
 
+  renderSuppliers(); renderDemoWarn();
   $("#pillBuy").textContent = REVIEW.length;
   $("#pillBuy").className = "pill" + (n("HOLD") ? " alert" : "");
   renderDetail();
@@ -1659,26 +1751,36 @@ function renderDetail(){
       : "");
 
   const d = PROC.draft(o, PROCDATA);
-  $("#bdTo").textContent = `WhatsApp → ${d.supplier} · ${d.to}`;
-  $("#bdMsg").textContent = d.body;
+  const num = supNum(o.supplier_id), v = waParse(num);
+  $("#bdTo").textContent = `WhatsApp → ${d.supplier} · ${num || "no number set"}`;
+  /* Keep whatever the user typed for this part; only reset when the part changes. */
+  const box = $("#bdMsg");
+  if(box.dataset.sku !== o.sku || !edited[o.sku]){ box.value = d.body; box.dataset.sku = o.sku; }
+  box.oninput = () => { edited[o.sku] = box.value; };
 
   const sent = outbox.some(x => x.sku === o.sku);
   const btn = $("#bdSend");
-  btn.disabled = sent;
-  btn.textContent = sent ? "Already in the outbox"
-    : o.decision === "HOLD" ? "Send the price query"
-    : o.route === "AUTO" ? "Send" : "Approve and send";
+  btn.disabled = !v.ok;
+  btn.textContent = !v.ok ? "Set a real number first"
+    : sent ? "Open in WhatsApp again"
+    : o.decision === "HOLD" ? "Open the price query in WhatsApp"
+    : "Open in WhatsApp";
   btn.className = "btn" + (o.decision === "HOLD" ? " sec" : "");
   btn.onclick = () => {
-    outbox.unshift({at:new Date().toLocaleTimeString("en-IN"), sku:o.sku, name:o.name,
-      supplier:d.supplier, to:d.to, decision:o.decision, route:o.route,
-      value:o.decision === "HOLD" ? 0 : o.order_value, body:d.body,
+    const text = box.value;
+    /* wa.me opens the app on a phone and web.whatsapp.com on a desktop. Either way
+       the message is pre-filled and the send button is theirs to press. */
+    window.open(`https://wa.me/${v.digits}?text=${encodeURIComponent(text)}`, "_blank", "noopener");
+    if(!sent) outbox.unshift({at:new Date().toLocaleTimeString("en-IN"), sku:o.sku, name:o.name,
+      supplier:d.supplier, to:num, decision:o.decision, route:o.route,
+      value:o.decision === "HOLD" ? 0 : o.order_value, body:text,
       /* a reprice is only half done when the order goes out: the listing still
          has to change, and this tool cannot touch Seller Central */
       repriceTo: o.decision === "REPRICE" ? o.required_price : null,
       repriceFrom: o.price});
     renderBuy();
   };
+  $("#bdRevert").disabled = !edited[o.sku];
 
   msg("#bdNote", o.decision === "HOLD" ? "warn" : "",
     o.decision === "HOLD"
@@ -1686,10 +1788,10 @@ function renderDetail(){
         `${policy.t}% target, and ${inr(o.required_price)} ${pct(o.price_rise_pct)} is past the ` +
         `${policy.r}% you allow. So the message asks the supplier to come down to ${inr(o.max_payable)} instead.`
     : o.route === "AUTO"
-      ? `Order value ${inr(o.order_value)} is under your ${inr(policy.a)} limit, so a live setup would send ` +
-        `this one on its own. Here it waits for the button — the point of the demonstration is that you ` +
-        `can see what it decided before it acts.`
-      : `Order value ${inr(o.order_value)} is over your ${inr(policy.a)} limit, so it needs you.` +
+      ? `Order value ${inr(o.order_value)} is under your ${inr(policy.a)} limit — a routine one. ` +
+        `It still opens in WhatsApp for you to send: automatic sending needs the WhatsApp Business ` +
+        `API on a separate number, which this does not use.`
+      : `Order value ${inr(o.order_value)} is over your ${inr(policy.a)} limit, so look at it properly.` +
         (o.decision === "REPRICE"
           ? ` Approving also means changing the Amazon listing to ${inr(o.required_price)} — the tool does not touch your listings.`
           : ""));
@@ -1699,7 +1801,7 @@ const OB_COLS = [
   {h:"Time", k:"at", sort:false},
   {h:"SKU", k:"sku", cls:"sku", sort:false},
   {h:"Part", k:"name", cls:"nm", sort:false},
-  {h:"Sent to", k:"supplier", sort:false},
+  {h:"Opened with", k:"supplier", sort:false},
   {h:"Number", k:"to", sort:false},
   {h:"Decision", k:"decision", html:true, sort:false,
    f:o=>`<span class="badge ${DEC_CLS[o.decision]}">${DEC_LAB[o.decision]}</span>`},
@@ -1883,8 +1985,10 @@ sortable($("#moversTbl"), MOVERS_COLS, moversRows, (k,dir) => { moversSort = {k,
 ["#pTarget","#pRise","#pAuto"].forEach(id => $(id).oninput = readPolicy);
 $("#pReset").onclick = () => { policy = {...DEFAULTS}; syncPolicyInputs(); renderBuy(); };
 $("#obClear").onclick = () => { outbox = []; renderBuy(); };
+$("#supReset").onclick = () => { supNums = {}; saveSup(); renderBuy(); };
+$("#bdRevert").onclick = () => { delete edited[$("#bdMsg").dataset.sku]; renderDetail(); };
 $("#bdCopy").onclick = () => {
-  const t = $("#bdMsg").textContent;
+  const t = $("#bdMsg").value;
   const done = ok => msg("#bdNote", ok ? "good" : "warn",
     ok ? "Message copied — paste it into WhatsApp yourself."
        : "Could not copy automatically. Select the message above and copy it.");
