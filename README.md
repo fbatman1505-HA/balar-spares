@@ -12,10 +12,35 @@ slower than last month, and which stock has stopped moving.
 |---|---|
 | Overview | How is the business doing, and where is the money stuck? |
 | Reorder | What do I buy this week, in what quantity, at what cost? |
+| Buying | Is the supplier's quote worth accepting, and does the selling price still work? |
 | What's Selling | What is moving, accelerating, or fading? |
 | Dead Stock | What has stopped selling, and how much capital is in it? |
 | Update Data | Add today's figures, by form or by CSV. |
 | Ask | Any of the above, in plain English. |
+
+## Buying
+
+The Reorder tab says *what* is running short. The Buying tab decides whether to actually buy it.
+
+For every short line it compares the supplier's current quote against every price that supplier
+has charged for that part before — last paid, median, best ever — and then works out what one
+unit actually earns after Amazon's referral fee, closing fee, shipping and the GST charged on
+those fees. Three outcomes follow:
+
+- **Buy** — the margin clears the target as things stand.
+- **Reprice** — it clears the target only at a higher selling price, and that price is shown.
+- **Hold** — no price rise inside the owner's ceiling rescues it, so the drafted message
+  negotiates on price instead of placing an order.
+
+Each line is routed to automatic sending or to manual approval by order value. The target
+margin, the price ceiling and the auto-send limit are inputs on the page, not constants in the
+code: change one and every line re-decides.
+
+**Nothing is sent.** The WhatsApp step is drafted and simulated — the outbox records what would
+go out. Proactive business-initiated WhatsApp messages require the WhatsApp Business Cloud API,
+a Meta-approved message template and a server; automating the personal app is against its terms
+of service. A repriced line is also only half done when the order goes out, because the Amazon
+listing still has to be changed by hand, so the outbox carries that as work outstanding.
 
 ## How it works
 
@@ -48,3 +73,9 @@ Re-entering a date that already exists replaces that day rather than adding to i
 The dataset is synthetic: 80 parts over 120 days, modelled on a real catalogue's structure,
 price bands and supplier lead times. No real customer, supplier or marketplace data is
 included.
+
+The procurement layer is synthetic too: `balar_purchase_history.csv` (433 past purchases) and
+`balar_quotes.csv` (current quotes) are generated. The six suppliers, their names and their
+phone numbers are invented — `+91 90000 0000x` is not a real number range. The Amazon fee
+figures are stated assumptions for the demonstration, editable on the page, and should be
+replaced with a real Seller Central schedule before any margin here is trusted.
