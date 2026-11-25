@@ -360,6 +360,7 @@ footer{text-align:center; font-size:11.5px; color:var(--ink-3); padding:8px 16px
     </p>
     <div class="chips" id="buyChips"></div>
     <div class="tblwrap"><table id="buyTbl" data-empty="Nothing needs buying on this filter."></table></div>
+    <div class="hint" id="buyFilterNote"></div>
     <div class="btnrow" style="margin-top:14px">
       <button class="btn sec" id="dlBuy">Download decisions (CSV)</button>
     </div>
@@ -514,7 +515,7 @@ footer{text-align:center; font-size:11.5px; color:var(--ink-3); padding:8px 16px
 <footer>
   BALAR SPARES inventory tool · figures recomputed in your browser each time the page loads ·
   demonstration dataset, not live Amazon data<br>
-  <span class="build">Build 25 Nov 2026, 21:29 IST · if this date looks old, you are seeing a cached copy —
+  <span class="build">Build 25 Nov 2026, 21:35 IST · if this date looks old, you are seeing a cached copy —
   reload with Ctrl&#8209;Shift&#8209;R (Cmd&#8209;Shift&#8209;R on a Mac)</span>
 </footer>
 </div>
@@ -1836,8 +1837,24 @@ const BUY_COLS = [
    f:o=>`<span class="badge ${o.route === "AUTO" ? "b-neutral" : "b-mag"}">${o.route === "AUTO" ? "Automatic" : "Ask me"}</span>`},
 ];
 
+/* The smallest set of lines that still shows every outcome and every urgency
+   tier: the most urgent example of each decision, then one more for any tier not
+   yet represented. A view filter — it hides lines, it never changes a figure, and
+   the totals above it still count all of them. */
+function oneOfEach(){
+  const tier = s => (M.find(x => x.sku === s) || {}).urg;
+  const pick = [];
+  const take = pred => { const c = REVIEW.find(o => pred(o) && !pick.includes(o)); if(c) pick.push(c); };
+  ["BUY", "REPRICE", "HOLD"].forEach(d => take(o => o.decision === d));
+  ["Critical", "Urgent", "Soon"].forEach(t => {
+    if(!pick.some(o => tier(o.sku) === t)) take(o => tier(o.sku) === t);
+  });
+  return REVIEW.filter(o => pick.includes(o));   // keep the table's own ordering
+}
 function buyRows(){
-  return buyFilter === "All" ? REVIEW : REVIEW.filter(o => o.decision === buyFilter);
+  if(buyFilter === "All")   return REVIEW;
+  if(buyFilter === "ONEOF") return oneOfEach();
+  return REVIEW.filter(o => o.decision === buyFilter);
 }
 
 function renderBuy(){
@@ -1859,8 +1876,8 @@ function renderBuy(){
   ]);
 
   const chips = $("#buyChips"); chips.innerHTML = "";
-  [["All","All lines"],["BUY","Buy"],["REPRICE","Reprice"],["HOLD","Hold"]].forEach(([k,lab]) => {
-    const c = k === "All" ? REVIEW.length : n(k);
+  [["All","All lines"],["ONEOF","One of each"],["BUY","Buy"],["REPRICE","Reprice"],["HOLD","Hold"]].forEach(([k,lab]) => {
+    const c = k === "All" ? REVIEW.length : k === "ONEOF" ? oneOfEach().length : n(k);
     const b = el("button","chip", `${lab} <b>${c}</b>`);
     b.setAttribute("aria-pressed", String(buyFilter === k));
     b.onclick = () => { buyFilter = k; renderBuy(); };
@@ -1875,6 +1892,10 @@ function renderBuy(){
     `your own Seller Central schedule before trusting any margin here.`);
 
   const rows = buyRows();
+  $("#buyFilterNote").innerHTML = buyFilter === "ONEOF"
+    ? `Showing ${rows.length} of ${REVIEW.length} lines — one example of every outcome and every ` +
+      `urgency tier. The totals above still count all ${REVIEW.length}.`
+    : buyFilter === "All" ? "" : `Showing ${rows.length} of ${REVIEW.length} lines.`;
   table($("#buyTbl"), BUY_COLS, rows,
     [{v:"Total, lines shown", span:6},
      {v:inr(rows.reduce((s,o)=>s+o.order_value,0)), num:true}, {v:"", span:6}]);
