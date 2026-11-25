@@ -262,6 +262,7 @@ footer{text-align:center; font-size:11.5px; color:var(--ink-3); padding:8px 16px
       <button class="tab" role="tab" id="t-overview" data-t="overview" aria-selected="true">Overview</button>
       <button class="tab" role="tab" id="t-reorder"  data-t="reorder"  aria-selected="false">Reorder <span class="pill alert" id="pillReorder">0</span></button>
       <button class="tab" role="tab" id="t-buy"      data-t="buy"      aria-selected="false">Buying <span class="pill" id="pillBuy">0</span></button>
+      <button class="tab" role="tab" id="t-price"    data-t="price"    aria-selected="false">Pricing <span class="pill" id="pillPrice">0</span></button>
       <button class="tab" role="tab" id="t-movers"   data-t="movers"   aria-selected="false">What's Selling</button>
       <button class="tab" role="tab" id="t-dead"     data-t="dead"     aria-selected="false">Dead Stock <span class="pill" id="pillDead">0</span></button>
       <button class="tab" role="tab" id="t-update"   data-t="update"   aria-selected="false">Update Data <span class="pill" id="pillUser">0</span></button>
@@ -454,6 +455,56 @@ footer{text-align:center; font-size:11.5px; color:var(--ink-3); padding:8px 16px
 
 </section>
 
+<!-- ======================================================== PRICING -->
+<section class="panel-body" id="p-price" role="tabpanel" aria-labelledby="t-price" hidden>
+
+  <div class="note" style="margin:0 0 16px">
+    <b>This page cannot see what other sellers charge.</b> Reading competitors' prices needs Amazon's
+    Selling Partner API, which needs a server; scraping the site is against Amazon's terms and risks
+    your seller account. What it does instead is work out the one number Amazon's own repricer has no
+    way of knowing — the lowest price you can accept and still make money.
+  </div>
+
+  <div class="kpis" id="priceKpis"></div>
+
+  <div class="card">
+    <h2>Can I match this price?</h2>
+    <p class="sub">
+      Seller Central's pricing page shows you what the Offer Display is going for. Put that figure in
+      here and find out whether matching it leaves you anything.
+    </p>
+    <div class="formrow quote">
+      <div><label for="cSku">Part</label><select id="cSku"></select></div>
+      <div><label for="cPrice">Their price (₹)</label><input type="number" id="cPrice" min="0" step="1" placeholder="e.g. 3950"></div>
+      <div><label for="cQty">Units a month</label><input type="number" id="cQty" min="0" step="1"></div>
+      <div><button class="btn" id="cGo">Work it out</button></div>
+      <div></div>
+    </div>
+    <div class="hint" id="cHint"></div>
+    <div id="cOut"></div>
+  </div>
+
+  <div class="card">
+    <h2>The lowest you can charge</h2>
+    <p class="sub m-hide">
+      For every part: what it costs you now, what Amazon takes at your current price, and the floor —
+      the price below which that sale stops clearing your <b id="floorTarget">12</b>% target. Set this
+      as the <b>minimum</b> in Seller Central → Pricing → Automate Pricing and the free repricer can
+      chase the Offer Display all it likes without ever taking you under water.
+    </p>
+    <div class="chips" id="priceChips"></div>
+    <div class="tblwrap"><table id="floorTbl" data-empty="Nothing on this filter."></table></div>
+    <div class="formrow quote" style="margin-top:14px">
+      <div><label for="cMax">Ceiling for the export, above your current price</label>
+        <input type="number" id="cMax" min="0" max="200" step="5" value="15"></div>
+      <div></div><div></div>
+      <div><button class="btn sec" id="dlFloor">Download min/max (CSV)</button></div>
+      <div></div>
+    </div>
+    <div class="note" id="floorNote"></div>
+  </div>
+</section>
+
 <!-- ======================================================== MOVERS -->
 <section class="panel-body" id="p-movers" role="tabpanel" aria-labelledby="t-movers" hidden>
   <div class="grid g2">
@@ -567,7 +618,7 @@ footer{text-align:center; font-size:11.5px; color:var(--ink-3); padding:8px 16px
 <footer>
   BALAR SPARES inventory tool · figures recomputed in your browser each time the page loads ·
   demonstration dataset, not live Amazon data<br>
-  <span class="build">Build 25 Nov 2026, 21:54 IST · if this date looks old, you are seeing a cached copy —
+  <span class="build">Build 25 Nov 2026, 22:18 IST · if this date looks old, you are seeing a cached copy —
   reload with Ctrl&#8209;Shift&#8209;R (Cmd&#8209;Shift&#8209;R on a Mac)</span>
 </footer>
 </div>
@@ -2097,6 +2148,111 @@ function readPolicy(){
   renderBuy();
 }
 
+/* ---------------------------------------------------------------- pricing */
+/* The floor is the same algebra the Buying tab uses, run over the whole
+   catalogue instead of only the lines that are short. Amazon's own repricer
+   asks for a minimum and has no idea what you pay, so this is the number it
+   cannot work out for itself. */
+let priceFilter = "All";
+
+function costNow(m){
+  const q = PROCDATA.quotes[m.sku];
+  return q ? q[1] : m.cost;          // a quote you entered wins over the catalogue
+}
+function floorFor(m){
+  const cost = costNow(m);
+  const floor = PROC.requiredPrice(cost, m.cat, policy.t, PROCDATA.fees);
+  const f = PROC.fees(m.price, m.cat, PROCDATA.fees);
+  const net = m.price - cost - f.total;
+  return {cost, floor, fees:f.total, net, pct: m.price ? net / m.price * 100 : 0,
+          head: floor === null ? null : m.price - floor,
+          headPct: floor === null ? null : (m.price - floor) / m.price * 100};
+}
+/* What one unit earns if you drop to someone else's price. */
+function atPrice(m, price){
+  const cost = costNow(m), f = PROC.fees(price, m.cat, PROCDATA.fees);
+  const net = price - cost - f.total;
+  return {cost, fees:f.total, net, pct: price ? net / price * 100 : 0};
+}
+
+const FLOOR_COLS = [
+  {h:"SKU", k:"sku", cls:"sku"},
+  {h:"Part", k:"name", cls:"nm"},
+  {h:"Costs you", k:"cost", num:true, f:r=>inr(r.g.cost)},
+  {h:"Amazon takes", k:"fees", num:true, cls:"m-hide", f:r=>inr(r.g.fees)},
+  {h:"You charge", k:"price", num:true, f:r=>inr(r.m.price)},
+  {h:"Floor", k:"floor", num:true, html:true,
+   f:r=> r.g.floor === null ? "—" : `<b>${inr(r.g.floor)}</b>`},
+  {h:"Room", k:"head", num:true, html:true, f:r=> r.g.head === null ? "—"
+    : `<span class="${r.g.head < 0 ? "delta-dn" : "delta-up"}">${inrS(r.g.head)}</span>`},
+  {h:"Now earning", k:"pct", num:true, html:true,
+   f:r=>`<span class="${r.g.pct < policy.t ? "delta-dn" : "delta-up"}">${r.g.pct.toFixed(1)}%</span>`},
+  /* Losing money and missing the target by a rupee are not the same problem, and
+     marking both red teaches you to ignore the colour. */
+  {h:"", k:"st", sort:false, html:true, f:r=> r.g.net < 0
+    ? `<span class="badge b-crit">Loses money</span>`
+    : r.g.floor === null || r.g.head < 0 ? `<span class="badge b-warn">Under target</span>`
+    : r.g.headPct < 5 ? `<span class="badge b-neutral">Barely clears</span>`
+    : `<span class="badge b-ok">Clears target</span>`},
+];
+
+function floorRows(){
+  const all = M.map(m => ({sku:m.sku, name:m.name, m, g:floorFor(m)}))
+    .map(r => Object.assign(r, {cost:r.g.cost, fees:r.g.fees, price:r.m.price,
+      floor:r.g.floor ?? 0, head:r.g.head ?? -1e9, pct:r.g.pct}));
+  if(priceFilter === "Losing") return all.filter(r => r.g.net < 0).sort((a,b)=>a.g.net-b.g.net);
+  if(priceFilter === "Under")  return all.filter(r => r.g.net >= 0 && (r.g.floor === null || r.g.head < 0))
+                                         .sort((a,b)=>a.g.head-b.g.head);
+  if(priceFilter === "Moving") return all.filter(r => r.m.u30 > 0).sort((a,b)=>a.g.pct-b.g.pct);
+  return all.sort((a,b)=>a.g.pct-b.g.pct);
+}
+
+function renderPrice(){
+  const all = M.map(m => ({m, g:floorFor(m)}));
+  const losing = all.filter(r => r.g.net < 0);
+  const under  = all.filter(r => r.g.net >= 0 && (r.g.floor === null || r.g.head < 0));
+  const bleed  = losing.filter(r => r.m.u30 > 0).reduce((s,r) => s + r.g.net * r.m.u30, 0);
+  const sellingLoss = losing.filter(r => r.m.u30 > 0).length;
+
+  kpi($("#priceKpis"), [
+    {lab:"Selling at a loss", val:losing.length,
+     note:`${sellingLoss} of them sold something this month`,
+     c:losing.length ? "k-crit" : "k-ok"},
+    {lab:"Costing you, each month", val:inrK(Math.abs(bleed)),
+     note:bleed < 0 ? "at this month's rate and today's costs" : "nothing is selling at a loss",
+     c:bleed < 0 ? "k-crit" : "k-ok"},
+    {lab:"Profitable, under target", val:under.length,
+     note:`earning something, but less than your ${policy.t}%`,
+     c:under.length ? "k-warn" : "k-ok"},
+  ]);
+
+  const chips = $("#priceChips"); chips.innerHTML = "";
+  [["All","Every part",M.length],["Losing","Losing money",losing.length],
+   ["Under","Under target",under.length],["Moving","Sold this month",all.filter(r=>r.m.u30>0).length]]
+   .forEach(([k,lab,c]) => {
+     const b = el("button","chip", `${lab} <b>${c}</b>`);
+     b.setAttribute("aria-pressed", String(priceFilter === k));
+     b.onclick = () => { priceFilter = k; renderPrice(); };
+     chips.appendChild(b);
+   });
+
+  $("#floorTarget").textContent = policy.t;
+  const rows = floorRows();
+  table($("#floorTbl"), FLOOR_COLS, rows);
+  $("#pillPrice").textContent = under.length;
+  $("#pillPrice").className = "pill" + (under.length ? " alert" : "");
+
+  msg("#floorNote", losing.length ? "warn" : "",
+    losing.length
+      ? `<b>${losing.length} parts lose money on every sale at today's cost</b>, and ${under.length} ` +
+        `more earn something but miss your ${policy.t}% target. Neither is a repricing problem — a ` +
+        `repricer only moves a price between the bounds you give it, and will not rescue a listing ` +
+        `that was already too cheap or a part whose supplier has got dearer. Those need a new price, ` +
+        `a new supplier, or dropping.`
+      : `Nothing is selling at a loss. Export these as minimums and the free repricer can chase the ` +
+        `Offer Display without ever taking a sale under your ${policy.t}% target.`);
+}
+
 let topMode = "units";
 let catFilter = "All", moversQ = "", moversSort = {k:"u30", dir:"desc"};
 const MOVERS_COLS = [
@@ -2223,7 +2379,7 @@ function skuHint(){
 
 function renderAll(){
   recompute(); renderHeader();
-  renderOverview(); renderReorder(); renderBuy(); renderMovers(); renderDead(); renderUpdate();
+  renderOverview(); renderReorder(); renderBuy(); renderPrice(); renderMovers(); renderDead(); renderUpdate();
 }
 
 /* ---------------------------------------------------------------- tabs */
@@ -2249,6 +2405,71 @@ sortable($("#moversTbl"), MOVERS_COLS, moversRows, (k,dir) => { moversSort = {k,
 ["#pTarget","#pRise","#pAuto"].forEach(id => $(id).oninput = readPolicy);
 $("#pReset").onclick = () => { policy = {...DEFAULTS}; syncPolicyInputs(); renderBuy(); };
 $("#obClear").onclick = () => { outbox = []; renderBuy(); };
+/* ---- pricing: the competitor check ---- */
+function cFill(){
+  const sel = $("#cSku"); sel.innerHTML = "";
+  [...M].sort((a,b)=>b.rev_all-a.rev_all).forEach(m => {
+    const o = document.createElement("option");
+    o.value = m.sku; o.textContent = `${m.sku} — ${m.name}`;
+    sel.appendChild(o);
+  });
+}
+function cHint(){
+  const m = M.find(x => x.sku === $("#cSku").value); if(!m) return;
+  const g = floorFor(m);
+  $("#cQty").value = m.u30;
+  $("#cHint").innerHTML = `You charge <b>${inr(m.price)}</b> and it costs you <b>${inr(g.cost)}</b>. ` +
+    `Your floor is <b>${g.floor === null ? "unreachable at any price" : inr(g.floor)}</b>. ` +
+    `Sold ${m.u30} in the last 30 days.`;
+  $("#cOut").innerHTML = "";
+}
+$("#cSku").onchange = cHint;
+$("#cGo").onclick = () => {
+  const m = M.find(x => x.sku === $("#cSku").value);
+  const p = Number($("#cPrice").value), qty = Number($("#cQty").value) || 0;
+  if(!m || !Number.isFinite(p) || p <= 0)
+    return msg("#cOut","warn","Put in the price you have seen them charging.");
+  const a = atPrice(m, p), g = floorFor(m);
+  const ok = a.pct >= policy.t;
+  const month = a.net * qty;
+  const verdict = ok
+    ? `<b>Match it.</b> At ${inr(p)} you keep ${inrS(a.net)} a unit — ${a.pct.toFixed(1)}%, clear of ` +
+      `your ${policy.t}% target.`
+    : a.net >= 0
+      ? `<b>You can, but it is thin.</b> At ${inr(p)} you keep only ${inrS(a.net)} a unit ` +
+        `(${a.pct.toFixed(1)}%), under your ${policy.t}% target. Your floor is ${inr(g.floor)}.`
+      : `<b>Do not match it.</b> At ${inr(p)} you lose ${inrS(Math.abs(a.net))} on every unit. ` +
+        `Your floor is ${inr(g.floor)} — ${inr(g.floor - p)} above what they are charging.`;
+  msg("#cOut", ok ? "good" : a.net >= 0 ? "warn" : "warn",
+    verdict +
+    (qty ? `<br>At ${qty} a month that is <b>${inrS(month)}</b> a month.` : "") +
+    `<br><span style="color:var(--ink-3)">${inr(p)} − ${inr(a.cost)} cost − ${inr(a.fees)} Amazon ` +
+    `= ${inrS(a.net)}. If they can sell at that and you cannot, their cost is lower than yours — ` +
+    `that is a supplier conversation, not a pricing one.</span>`);
+};
+$("#dlFloor").onclick = () => {
+  const up = 1 + (Number($("#cMax").value) || 15) / 100;
+  let raise = 0;
+  const rows = floorRows().filter(r => r.g.floor !== null).map(r => {
+    const min = r.g.floor, max = Math.max(r.m.price, min) * up;
+    /* A floor above today's price is not something to automate blindly: handed to
+       Amazon as a minimum it forces a price rise the moment the rule runs. */
+    const needsRaise = min > r.m.price;
+    if(needsRaise) raise++;
+    return [r.sku, r.name, Math.round(min), Math.ceil(max / 5) * 5, r.m.price,
+            Math.round(r.g.cost), r.g.pct.toFixed(2),
+            needsRaise ? "decide before automating - floor is above your price" : "safe to automate"];
+  });
+  download("balar_price_floors.csv",
+    csv([["sku","part","minimum_price_inr","maximum_price_inr","current_price_inr",
+          "cost_now_inr","margin_now_pct","action"], ...rows]));
+  msg("#floorNote","warn",
+    `<b>${rows.length} parts exported, and ${raise} of them carry a floor above what you charge ` +
+    `today.</b> Upload those as minimums and the repricer will raise the price the moment it runs — ` +
+    `which may be right, but it is a decision, not a setting. The <span class="mono">action</span> ` +
+    `column marks them. The other ${rows.length - raise} are safe to automate as they stand.`);
+};
+
 $("#supReset").onclick = () => { supNums = {}; saveSup(); renderBuy(); };
 
 /* ---- quote entry ---- */
@@ -2453,6 +2674,8 @@ CONSOLE.CHIPS.forEach(c => { const b = el("button","chip",esc(c));
 syncPolicyInputs();
 renderAll();
 fillQuoteSkus();
+cFill();
+cHint();
 $("#qSeedDate").textContent = PROCDATA.quotes[M[0].sku] ? PROCDATA.quotes[M[0].sku][2] : "—";
 $("#qDate").value = D.dates[D.dates.length - 1];
 syncQuoteForm();
