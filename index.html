@@ -514,7 +514,7 @@ footer{text-align:center; font-size:11.5px; color:var(--ink-3); padding:8px 16px
 <footer>
   BALAR SPARES inventory tool · figures recomputed in your browser each time the page loads ·
   demonstration dataset, not live Amazon data<br>
-  <span class="build">Build 25 Nov 2026, 20:57 IST · if this date looks old, you are seeing a cached copy —
+  <span class="build">Build 25 Nov 2026, 21:10 IST · if this date looks old, you are seeing a cached copy —
   reload with Ctrl&#8209;Shift&#8209;R (Cmd&#8209;Shift&#8209;R on a Mac)</span>
 </footer>
 </div>
@@ -1923,8 +1923,14 @@ function renderDetail(){
     row(`Cost of the part`, "−" + inr(o.quote), "rule") +
     row(`Net per unit`, `<b class="${o.margin_pct >= o.target_pct ? "delta-up" : "delta-dn"}">` +
         `${inrS(o.net_unit)} (${o.margin_pct.toFixed(1)}%)</b>`, "tot") +
+    /* Below the current price this is headroom, not an instruction to cut. Saying
+       "price needed" on a line already clearing the target invites giving margin away. */
     (o.required_price
-      ? row(`Price needed for ${policy.t}%`, `${inr(o.required_price)} <span class="mute">(${pct(o.price_rise_pct)})</span>`)
+      ? o.price_rise_pct > 0
+        ? row(`Price needed for ${policy.t}%`,
+              `${inr(o.required_price)} <span class="mute">(${pct(o.price_rise_pct)})</span>`)
+        : row(`Could go as low as, and still clear ${policy.t}%`,
+              `${inr(o.required_price)} <span class="mute">(${pct(o.price_rise_pct)})</span>`)
       : "");
 
   const d = PROC.draft(o, PROCDATA);
@@ -1968,10 +1974,14 @@ function renderDetail(){
       ? `Order value ${inr(o.order_value)} is under your ${inr(policy.a)} limit — a routine one. ` +
         `It still opens in WhatsApp for you to send: automatic sending needs the WhatsApp Business ` +
         `API on a separate number, which this does not use.`
-      : `Order value ${inr(o.order_value)} is over your ${inr(policy.a)} limit, so look at it properly.` +
-        (o.decision === "REPRICE"
-          ? ` Approving also means changing the Amazon listing to ${inr(o.required_price)} — the tool does not touch your listings.`
-          : ""));
+    /* A line can be manual for two different reasons. Saying "over your limit" on a
+       reprice that is well under it puts a figure on screen that contradicts itself. */
+      : o.decision === "REPRICE"
+        ? `A price change always needs you, whatever it costs — this order is ${inr(o.order_value)}, ` +
+          (o.order_value <= policy.a ? `inside` : `and also over`) + ` your ${inr(policy.a)} limit. ` +
+          `Approving it means moving the Amazon listing from ${inr(o.price)} to ` +
+          `${inr(o.required_price)} as well, and the tool does not touch your listings.`
+        : `Order value ${inr(o.order_value)} is over your ${inr(policy.a)} limit, so look at it properly.`);
 }
 
 const OB_COLS = [
