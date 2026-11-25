@@ -50,6 +50,22 @@ cannot safely do. Libraries that drive the ordinary app are against WhatsApp's t
 A repriced line is also only half done when the order goes out, because the Amazon listing still
 has to be changed by hand, so the outbox carries that as work outstanding.
 
+## Where the quotes come from
+
+Three ways in, under *Update a quote*: type one in, paste the supplier's actual reply and have the
+price pulled out of it by pattern match, or import a price list as CSV
+(`sku, unit_price_inr`, optionally `supplier_id` and `quoted_on`). Anything entered overrides the
+file and is stored in your browser; the supplied figures are never edited and can be restored.
+
+A quote carries its date and is aged against the last day the dataset covers — the same reference
+every other figure here uses. Past 14 days it is flagged in the table rather than quietly counted,
+because a tool that decides on month-old prices is giving a confident wrong answer.
+
+The quotes shipped in `balar_quotes.csv` are generated, like the rest of the dataset: each one is
+the last invented purchase price multiplied by a random factor. Six parts had that factor set
+deliberately so the demonstration exercises all three decision branches. Nothing here was
+discovered in the data; the data was built to exercise the logic.
+
 ## How it works
 
 Every decision-driving figure — velocity, days of cover, reorder point, order quantity,
