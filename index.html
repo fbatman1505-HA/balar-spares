@@ -575,12 +575,21 @@ footer{text-align:center; font-size:11.5px; color:var(--ink-3); padding:8px 16px
     <div class="chips" style="margin-top:12px" id="qChips"></div>
     <div id="qOut"></div>
   </div>
+
+  <div class="card" id="taughtCard" hidden>
+    <h2>Words you have taught it</h2>
+    <p class="sub">
+      Your wording, mapped onto a question the engine already answers. Kept in this browser only.
+      It never changes a figure — it only decides which question your words mean.
+    </p>
+    <div class="tblwrap"><table id="taughtTbl"></table></div>
+  </div>
 </section>
 
 <footer>
   BALAR SPARES inventory tool · figures recomputed in your browser each time the page loads ·
   demonstration dataset, not live Amazon data<br>
-  <span class="build">Build 25 Nov 2026, 22:36 IST · if this date looks old, you are seeing a cached copy —
+  <span class="build">Build 25 Nov 2026, 22:40 IST · if this date looks old, you are seeing a cached copy —
   reload with Ctrl&#8209;Shift&#8209;R (Cmd&#8209;Shift&#8209;R on a Mac)</span>
 </footer>
 </div>
@@ -810,7 +819,28 @@ INTENTS: [
                        "how many items":8,"total skus":8} },
 ],
 
-match(q){
+/* Plain-English name for each thing the box knows how to work out, used when it
+   has to ask which one you meant. */
+LABELS: {
+  reorder:"What should I reorder?", ordercost:"What will that order cost?",
+  urgent:"What is most urgent?", dead:"What has stopped selling?",
+  deadmoney:"How much money is stuck in stock?", topunits:"What sells the most units?",
+  toprev:"Which parts earn me the most?", growing:"What is picking up?",
+  declining:"What is falling away?", revenue:"What have I earned?",
+  invvalue:"What is my stock worth?", stockout:"What ran out of stock?",
+  category:"Which category earns the most?", trend:"What is rising and falling?",
+  overstock:"Am I holding too much of anything?", buying:"Is it worth buying at these quotes?",
+  reprice:"Which parts need a price change?", pricerise:"Has a supplier raised their price?",
+  counts:"How many parts do I have?", help:"What can you answer?",
+},
+
+/* The exact words someone typed, flattened so spacing and punctuation do not
+   decide whether it is recognised next time. */
+norm(q){ return String(q).toLowerCase().replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim(); },
+
+match(q, learned){
+  const taught = learned && learned[this.norm(q)];
+  if(taught && this.LABELS[taught]) return {id:taught, score:10, taught:true};
   const s = " " + q.toLowerCase().replace(/[^a-z0-9\- ]/g," ").replace(/\s+/g," ") + " ";
   let best = null, bs = 0;
   this.INTENTS.forEach(it => {
@@ -857,7 +887,8 @@ answer(q, ctx){
 
   // a named part wins over a general intent
   const one = this.findSku(q, M);
-  const {id, score} = this.match(q);
+  const {id, score, taught} = this.match(q, ctx.LEARNED);
+  if(taught) return this.wrapTaught(this.run(id, ctx, win, clip), q);
 
   if(one && score < 9){
     const status = one.dead ? '<span class="badge b-mag">Dead stock</span>'
@@ -882,15 +913,40 @@ answer(q, ctx){
       `Category ${esc(one.cat)} · cost ${inr(one.cost)} · sells at ${inr(one.price)} · computed over ${win}.`);
   }
 
-  if(score < 5) return this.box("I could not match that question",
-    `<p>I only answer from the figures in this tool, and I did not recognise that one well enough
-      to be sure I would answer the right thing. Rather than guess, here is what I can answer:</p>
-     <ul style="margin:8px 0 0 18px; padding:0">
-       ${this.CHIPS.slice(0,12).map(c => `<li style="margin:3px 0">${esc(c)}</li>`).join("")}
-     </ul>
-     <p style="margin-top:9px">You can also name any part or SKU code — for example
-      <span class="mono">How is BLR-1003 doing?</span> — and I will read out everything known about it.</p>`);
+  /* Rather than guess, ask. Whichever you pick is remembered against these exact
+     words, so the box ends up speaking your vocabulary instead of mine. */
+  if(score < 5) return this.box("I do not know those words yet",
+    `<p>I did not recognise that well enough to be sure I would answer the right thing.
+      Tell me which one you meant and I will remember it for next time.</p>` +
+    this.pickList(q) +
+    `<p style="margin-top:11px">You can also name any part or SKU code — for example
+      <span class="mono">How is BLR-1003 doing?</span> — and I will read out everything about it.</p>`);
 
+  return this.weakly(this.run(id, ctx, win, clip), q, id, score);
+},
+
+/* Shown under an answer the box was not confident about, so a wrong guess can be
+   corrected once instead of being retyped every time. */
+weakly(html, q, id, score){
+  if(score >= 9) return html;
+  return html + `<div class="note" style="margin-top:10px">Not what you meant? ` +
+    `<button class="btn sec mini" data-pick="__list" data-q="${this.esc2(q)}">Tell me which</button></div>`;
+},
+wrapTaught(html, q){
+  return html + `<div class="note good" style="margin-top:10px">Answered from what you taught me ` +
+    `for “${this.esc2(q)}”. <button class="btn sec mini" data-forget="${this.esc2(q)}">Forget that</button></div>`;
+},
+esc2(s){ return String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); },
+pickList(q){
+  return `<div class="chips" style="margin-top:10px">` +
+    Object.keys(this.LABELS).filter(k => k !== "help").map(k =>
+      `<button class="chip" data-pick="${k}" data-q="${this.esc2(q)}">${this.esc2(this.LABELS[k])}</button>`
+    ).join("") + `</div>`;
+},
+
+run(id, ctx, win, clip){
+  const {D, M, S, ANALYTICS, fmt, REVIEW, POLICY} = ctx;
+  const {inr, inrK, num, n1, esc, badge} = fmt;
   switch(id){
 
   case "help": return this.box("What I can answer",
@@ -2298,7 +2354,7 @@ function skuHint(){
 
 function renderAll(){
   recompute(); renderHeader();
-  renderOverview(); renderBuy(); renderPrice(); renderMovers(); renderUpdate();
+  renderOverview(); renderBuy(); renderTaught(); renderPrice(); renderMovers(); renderUpdate();
 }
 
 /* ---------------------------------------------------------------- tabs */
@@ -2498,6 +2554,40 @@ $("#fAdd").onclick = () => {
   $("#fUnits").value = 0; $("#fStock").value = "";
 };
 
+/* Wording the owner has taught it, kept in this browser. It only ever maps the
+   words someone typed onto a question the engine already knows how to answer —
+   it never invents a new figure. */
+const LS_LEARN = "balar.learned.v1";
+let learned = {};
+try { learned = JSON.parse(localStorage.getItem(LS_LEARN) || "{}"); } catch(e){ learned = {}; }
+function saveLearned(){ try { localStorage.setItem(LS_LEARN, JSON.stringify(learned)); } catch(e){} }
+
+function ask(q){
+  $("#q").value = q;
+  $("#qOut").innerHTML = CONSOLE.answer(q, {D, M, S, ANALYTICS, REVIEW, POLICY:policy,
+                                            LEARNED:learned,
+                                            fmt:{inr, inrK, num, n1, esc, badge}});
+  afterAnswer();
+}
+function teach(phrase, id){
+  learned[CONSOLE.norm(phrase)] = id;
+  saveLearned(); renderTaught(); ask(phrase);
+}
+function renderTaught(){
+  const rows = Object.entries(learned);
+  $("#taughtCard").hidden = !rows.length;
+  rows.sort((a,b) => a[0].localeCompare(b[0]));
+  table($("#taughtTbl"), [
+    {h:"When you say", k:"p", sort:false},
+    {h:"I answer", k:"a", sort:false},
+    {h:"", k:"x", sort:false, html:true,
+     f:r=>`<button class="btn sec mini" data-forget="${esc(r.p)}">Forget</button>`},
+  ], rows.map(([p,id]) => ({p, a:CONSOLE.LABELS[id] || id})));
+  $("#taughtTbl").querySelectorAll("button[data-forget]").forEach(b => {
+    b.onclick = () => { delete learned[b.dataset.forget]; saveLearned(); renderTaught(); };
+  });
+}
+
 /* An answer can carry the chart and the download its old tab had, so moving a
    view into the question box costs nothing. */
 function afterAnswer(){
@@ -2507,6 +2597,20 @@ function afterAnswer(){
     inrK, () => "#C62828");
   $("#qOut").querySelectorAll("button[data-dl]").forEach(b => {
     if(b.dataset.dl === "dead") b.onclick = dlDead;
+  });
+  $("#qOut").querySelectorAll("button[data-pick]").forEach(b => {
+    b.onclick = () => {
+      if(b.dataset.pick === "__list"){
+        $("#qOut").innerHTML = CONSOLE.box("Which one did you mean?",
+          `<p>Pick the right one and I will remember it for “${esc(b.dataset.q)}”.</p>` +
+          CONSOLE.pickList(b.dataset.q));
+        afterAnswer();
+      } else teach(b.dataset.q, b.dataset.pick);
+    };
+  });
+  $("#qOut").querySelectorAll("button[data-forget]").forEach(b => {
+    b.onclick = () => { delete learned[CONSOLE.norm(b.dataset.forget)]; saveLearned();
+      renderTaught(); ask(b.dataset.forget); };
   });
 }
 function dlDead(){
@@ -2588,6 +2692,7 @@ function askNow(){
   const q = $("#q").value.trim();
   if(!q){ $("#qOut").innerHTML = ""; return; }
   $("#qOut").innerHTML = CONSOLE.answer(q, {D, M, S, ANALYTICS, REVIEW, POLICY:policy,
+                                            LEARNED:learned,
                                             fmt:{inr, inrK, num, n1, esc, badge}});
   afterAnswer();
 }
