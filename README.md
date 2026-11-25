@@ -14,9 +14,8 @@ slower than last month, and which stock has stopped moving.
 | Reorder | What is running short, what it costs, whether the quote is worth accepting, and what goes to the supplier |
 | Pricing | The lowest price each part can be sold at, and whether a rival's price can be matched |
 | What's Selling | What is moving, accelerating, or fading? |
-| Dead Stock | What has stopped selling, and how much capital is in it? |
 | Update Data | Add today's figures, by form or by CSV. |
-| Ask | Any of the above, in plain English. |
+| Ask | Any of the above in plain English, plus dead stock, stockouts and overstock, which have no tab of their own |
 
 ## Reorder
 

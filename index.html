@@ -261,12 +261,11 @@ footer{text-align:center; font-size:11.5px; color:var(--ink-3); padding:8px 16px
     </p>
     <div class="tabs" role="tablist">
       <button class="tab" role="tab" id="t-overview" data-t="overview" aria-selected="true">Overview</button>
+      <button class="tab" role="tab" id="t-ask"      data-t="ask"      aria-selected="false">Ask</button>
       <button class="tab" role="tab" id="t-buy"      data-t="buy"      aria-selected="false">Reorder <span class="pill alert" id="pillBuy">0</span></button>
       <button class="tab" role="tab" id="t-price"    data-t="price"    aria-selected="false">Pricing <span class="pill" id="pillPrice">0</span></button>
       <button class="tab" role="tab" id="t-movers"   data-t="movers"   aria-selected="false">What's Selling</button>
-      <button class="tab" role="tab" id="t-dead"     data-t="dead"     aria-selected="false">Dead Stock <span class="pill" id="pillDead">0</span></button>
       <button class="tab" role="tab" id="t-update"   data-t="update"   aria-selected="false">Update Data <span class="pill" id="pillUser">0</span></button>
-      <button class="tab" role="tab" id="t-ask"      data-t="ask"      aria-selected="false">Ask</button>
     </div>
   </div>
 </header>
@@ -517,27 +516,6 @@ footer{text-align:center; font-size:11.5px; color:var(--ink-3); padding:8px 16px
 </section>
 
 <!-- ======================================================== DEAD STOCK -->
-<section class="panel-body" id="p-dead" role="tabpanel" aria-labelledby="t-dead" hidden>
-  <div class="kpis" id="deadKpis"></div>
-  <div class="card">
-    <h2>Capital tied up in dead stock</h2>
-    <p class="sub">Largest ten by money at cost. Dead = no sale for 60 days or more with stock still on the shelf.</p>
-    <div id="chDead"></div>
-  </div>
-  <div class="card">
-    <h2>Stock that has stopped moving</h2>
-    <p class="sub">Sorted by money tied up. These are the candidates for a discount, a bundle or a write-off.</p>
-    <div class="tblwrap"><table id="deadTbl" data-empty="Nothing has gone 60 days without a sale."></table></div>
-    <div class="btnrow" style="margin-top:14px">
-      <button class="btn sec" id="dlDead">Download dead-stock list (CSV)</button>
-    </div>
-  </div>
-  <div class="card">
-    <h2>Ran out of stock in the last 30 days</h2>
-    <p class="sub">Days at zero stock. Every one of these is a day the listing could not sell.</p>
-    <div class="tblwrap"><table id="soTbl" data-empty="No part ran out of stock in the last 30 days."></table></div>
-  </div>
-</section>
 
 <!-- ======================================================== UPDATE DATA -->
 <section class="panel-body" id="p-update" role="tabpanel" aria-labelledby="t-update" hidden>
@@ -602,7 +580,7 @@ footer{text-align:center; font-size:11.5px; color:var(--ink-3); padding:8px 16px
 <footer>
   BALAR SPARES inventory tool · figures recomputed in your browser each time the page loads ·
   demonstration dataset, not live Amazon data<br>
-  <span class="build">Build 25 Nov 2026, 22:30 IST · if this date looks old, you are seeing a cached copy —
+  <span class="build">Build 25 Nov 2026, 22:36 IST · if this date looks old, you are seeing a cached copy —
   reload with Ctrl&#8209;Shift&#8209;R (Cmd&#8209;Shift&#8209;R on a Mac)</span>
 </footer>
 </div>
@@ -772,10 +750,15 @@ INTENTS: [
   { id:"urgent",    w:{"most urgent":9,"run out first":9,"which will run out first":10,"most critical":8,
                        "biggest risk":7,"what is critical":8,"about to finish":9,"about to end":8,
                        "finish first":8,"most pressing":8} },
-  { id:"dead",      w:{"dead stock":9,"not selling":8,"stopped moving":9,"slow moving":8,"no sales":7,
+  { id:"dead",      w:{"stopped selling":10,"stopped moving":10,"not moving":9,"nobody is buying":10,
+                     "gathering dust":10,"stuck stock":9,"old stock":8,"slow movers":8,
+                     "should i discount":9,"what should i clear":9,"write off":9,"no sales":8,
+                     "which parts are dead":10,"anything not selling":10,"dead stock":9,"not selling":8,"stopped moving":9,"slow moving":8,"no sales":7,
                        "hasn't sold":8,"has not sold":8,"obsolete":7,"write off":6,"stale":6,"products are slow":8,"parts are slow":8,
                        "slow sellers":8,"which are slow":8,"not moving":8} },
-  { id:"deadmoney", w:{"money is stuck":10,"money stuck":9,"capital tied":10,"cash tied":9,"tied up":8,
+  { id:"deadmoney", w:{"money stuck":10,"cash stuck":10,"capital tied":10,"money sitting":10,
+                     "how much is dead":10,"value of dead stock":10,"money not earning":10,
+                     "dead stock worth":10,"cost of dead stock":10,"money is stuck":10,"money stuck":9,"capital tied":10,"cash tied":9,"tied up":8,
                        "how much money is stuck":10,"stuck in stock":9,"money in dead stock":10} },
   { id:"topunits",  w:{"selling best":9,"best selling":9,"top seller":9,"most units":9,"sells the most":9,
                        "what is selling":7,"fastest selling":8,"best sellers":9,"top sellers":9,
@@ -793,7 +776,9 @@ INTENTS: [
                        "how much did i sell":9,"how much have i made":9,"sales so far":8} },
   { id:"invvalue",  w:{"inventory value":9,"stock value":9,"value of my stock":10,"how much stock do i have":9,
                        "worth of stock":8,"inventory at cost":9,"how much inventory":8} },
-  { id:"stockout",  w:{"run out of stock":9,"ran out":8,"out of stock":9,"stockout":9,"zero stock":9,
+  { id:"stockout",  w:{"ran out":10,"run out":9,"went out of stock":10,"out of stock":9,
+                     "zero stock":9,"off sale":9,"could not sell":9,"lost sales":9,
+                     "missed sales":9,"days at zero":10,"stockouts":10,"run out of stock":9,"ran out":8,"out of stock":9,"stockout":9,"zero stock":9,
                        "hit zero":8,"nil stock":7} },
   { id:"category",  w:{"which category":9,"category earns":10,"best category":9,"by category":8,
                        "category wise":8,"which categories":9,"revenue by category":10} },
@@ -909,7 +894,7 @@ answer(q, ctx){
   switch(id){
 
   case "help": return this.box("What I can answer",
-    `<p>I read the tables on the other tabs and answer in words. Every number I give is the
+    `<p>Ask in your own words. Dead stock, what ran out and what you are overstocked on live only here — they have no tab of their own. Every number I give is the
        same number shown there — I do not estimate anything.</p>
      <ul style="margin:8px 0 0 18px; padding:0">
        ${this.CHIPS.slice(0,12).map(c => `<li style="margin:3px 0">${esc(c)}</li>`).join("")}
@@ -972,6 +957,8 @@ answer(q, ctx){
 
   case "dead": {
     const d = ANALYTICS.deadList(M);
+    /* The tab this replaced had a chart and a download; an answer that drops them
+       is a worse answer, so it carries both. The page fills #qChart after insert. */
     if(!d.length) return this.box("No dead stock",
       `<p>Nothing has gone 60 days or more without a sale while still holding stock.</p>`);
     return this.box(`${d.length} part${d.length===1?"":"s"} have stopped moving`,
@@ -983,7 +970,10 @@ answer(q, ctx){
                 {h:"Stock", num:true, v:m=>num(m.stock)},
                 {h:"Days unsold", num:true, v:m=>num(m.days_since)},
                 {h:"Capital tied", num:true, v:m=>inr(m.tied)}], d.slice(0,12)) +
-      (d.length > 12 ? `<p style="margin-top:8px">Showing the 12 largest of ${d.length}; the Dead Stock tab has them all.</p>` : ""),
+      (d.length > 12 ? `<p style="margin-top:8px">The 12 largest of ${d.length}. The download has them all.</p>` : "") +
+      `<div id="qChart" style="margin-top:16px"></div>` +
+      `<div class="btnrow" style="margin-top:12px">` +
+      `<button class="btn sec" data-dl="dead">Download the list (CSV)</button></div>`,
       `Computed over ${win}. 60 days is the threshold this tool uses.`);
   }
 
@@ -1662,7 +1652,6 @@ function badge(u){ return u ? `<span class="badge ${URG_CLS[u]}">${u}</span>` : 
 function renderHeader(){
   $("#hdrWindow").textContent = D.dates[0] + " → " + D.dates[D.dates.length-1];
   $("#hdrDays").textContent   = D.dates.length;
-  $("#pillDead").textContent = S.dead_count;
   $("#pillUser").textContent = userRows.length;
 }
 
@@ -2264,31 +2253,6 @@ function renderMovers(){
   if(th) th.dataset.dir = moversSort.dir;
 }
 
-function renderDead(){
-  const dead = ANALYTICS.deadList(M);
-  const so = M.filter(m => m.stockout_days > 0).sort((a,b)=>b.stockout_days-a.stockout_days);
-  kpi($("#deadKpis"), [
-    {lab:"Dead parts", val:S.dead_count, note:"no sale in 60 days or more", c:"k-warn"},
-    {lab:"Capital tied up", val:inrK(S.dead_tied),
-     note: S.inventory_at_cost ? (S.dead_tied/S.inventory_at_cost*100).toFixed(1)+"% of all stock value" : "—", c:"k-crit"},
-    {lab:"Biggest single item", val: dead.length ? inrK(dead[0].tied) : "—",
-     note: dead.length ? esc(dead[0].name) + " · " + dead[0].days_since + " days unsold" : "no dead stock", c:"k-mag"},
-  ]);
-  barChart($("#chDead"), dead.slice(0,10).map(m => ({
-    label: m.name.length>26?m.name.slice(0,25)+"…":m.name, value:m.tied })), inrK, () => "#C62828");
-  table($("#deadTbl"), [
-    {h:"SKU", k:"sku", cls:"sku"}, {h:"Part", k:"name", cls:"nm"}, {h:"Category", k:"cat"},
-    {h:"Stock", k:"stock", num:true}, {h:"Days unsold", k:"days_since", num:true},
-    {h:"Cost each", k:"cost", num:true, f:m=>inr(m.cost)},
-    {h:"Capital tied", k:"tied", num:true, f:m=>inr(m.tied)},
-  ], dead, [{v:`${dead.length} parts`, span:6}, {v:inr(S.dead_tied), num:true}]);
-  table($("#soTbl"), [
-    {h:"SKU", k:"sku", cls:"sku"}, {h:"Part", k:"name", cls:"nm"},
-    {h:"Days at zero stock", k:"stockout_days", num:true},
-    {h:"Sold 30d", k:"u30", num:true},
-    {h:"Stock now", k:"stock", num:true},
-  ], so);
-}
 
 function renderUpdate(){
   const sel = $("#fSku");
@@ -2334,7 +2298,7 @@ function skuHint(){
 
 function renderAll(){
   recompute(); renderHeader();
-  renderOverview(); renderBuy(); renderPrice(); renderMovers(); renderDead(); renderUpdate();
+  renderOverview(); renderBuy(); renderPrice(); renderMovers(); renderUpdate();
 }
 
 /* ---------------------------------------------------------------- tabs */
@@ -2534,6 +2498,22 @@ $("#fAdd").onclick = () => {
   $("#fUnits").value = 0; $("#fStock").value = "";
 };
 
+/* An answer can carry the chart and the download its old tab had, so moving a
+   view into the question box costs nothing. */
+function afterAnswer(){
+  const c = $("#qChart");
+  if(c) barChart(c, ANALYTICS.deadList(M).slice(0,10).map(m => ({
+    label: m.name.length > 26 ? m.name.slice(0,25) + "…" : m.name, value:m.tied })),
+    inrK, () => "#C62828");
+  $("#qOut").querySelectorAll("button[data-dl]").forEach(b => {
+    if(b.dataset.dl === "dead") b.onclick = dlDead;
+  });
+}
+function dlDead(){
+  download("balar_dead_stock.csv",
+    csv([["sku","part","category","stock","days_since_last_sale","unit_cost_inr","capital_tied_inr"],
+         ...ANALYTICS.deadList(M).map(m => [m.sku, m.name, m.cat, m.stock, m.days_since, m.cost, m.tied])]));
+}
 function parseCsv(text){
   const lines = text.replace(/\r/g,"").split("\n").filter(l => l.trim() !== "");
   if(!lines.length) return {rows:[], errors:["The file is empty."]};
@@ -2597,9 +2577,6 @@ $("#resetUser").onclick = () => {
 
 $("#dlUser").onclick = () => download("balar_my_entries.csv",
   csv([["date","sku","units_sold","closing_stock"], ...userRows.map(r => [r.date, r.sku, r.units, r.stock])]));
-$("#dlDead").onclick = () => download("balar_dead_stock.csv",
-  csv([["sku","part","category","stock","days_since_last_sale","unit_cost_inr","capital_tied_inr"],
-       ...ANALYTICS.deadList(M).map(m => [m.sku, m.name, m.cat, m.stock, m.days_since, m.cost, m.tied])]));
 $("#dlMovers").onclick = () => download("balar_sales_30d.csv",
   csv([["sku","part","category","sold_7d","sold_30d","prior_30d","change_pct","revenue_30d_inr","stock","days_cover","status"],
        ...moversRows().map(m => [m.sku, m.name, m.cat, m.u7, m.u30, m.prev30,
@@ -2612,6 +2589,7 @@ function askNow(){
   if(!q){ $("#qOut").innerHTML = ""; return; }
   $("#qOut").innerHTML = CONSOLE.answer(q, {D, M, S, ANALYTICS, REVIEW, POLICY:policy,
                                             fmt:{inr, inrK, num, n1, esc, badge}});
+  afterAnswer();
 }
 $("#qGo").onclick = askNow;
 $("#q").onkeydown = e => { if(e.key === "Enter") askNow(); };
