@@ -11,16 +11,16 @@ slower than last month, and which stock has stopped moving.
 | Tab | Question it answers |
 |---|---|
 | Overview | How is the business doing, and where is the money stuck? |
-| Reorder | What do I buy this week, in what quantity, at what cost? |
-| Buying | Is the supplier's quote worth accepting, does the selling price still work, and what goes to the supplier? |
+| Reorder | What is running short, what it costs, whether the quote is worth accepting, and what goes to the supplier |
+| Pricing | The lowest price each part can be sold at, and whether a rival's price can be matched |
 | What's Selling | What is moving, accelerating, or fading? |
 | Dead Stock | What has stopped selling, and how much capital is in it? |
 | Update Data | Add today's figures, by form or by CSV. |
 | Ask | Any of the above, in plain English. |
 
-## Buying
+## Reorder
 
-The Reorder tab says *what* is running short. The Buying tab decides whether to actually buy it.
+One tab answers both halves: what is running short, and whether to buy it at the quoted price.
 
 For every short line it compares the supplier's current quote against every price that supplier
 has charged for that part before — last paid, median, best ever — and then works out what one

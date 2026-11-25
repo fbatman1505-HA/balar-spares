@@ -59,7 +59,8 @@ header .wrap{padding-bottom:0}
 @media(max-width:820px){ .g2{grid-template-columns:1fr} }
 
 /* ---------------------------------------------------------------- kpi */
-.kpis{display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:16px}
+.kpis{display:grid; gap:12px; margin-bottom:16px;
+  grid-template-columns:repeat(auto-fit, minmax(210px, 1fr))}
 @media(max-width:820px){ .kpis{grid-template-columns:repeat(2,1fr)} }
 @media(max-width:520px){ .kpis{grid-template-columns:1fr} }
 .kpi{background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--cyan);
@@ -260,8 +261,7 @@ footer{text-align:center; font-size:11.5px; color:var(--ink-3); padding:8px 16px
     </p>
     <div class="tabs" role="tablist">
       <button class="tab" role="tab" id="t-overview" data-t="overview" aria-selected="true">Overview</button>
-      <button class="tab" role="tab" id="t-reorder"  data-t="reorder"  aria-selected="false">Reorder <span class="pill alert" id="pillReorder">0</span></button>
-      <button class="tab" role="tab" id="t-buy"      data-t="buy"      aria-selected="false">Buying <span class="pill" id="pillBuy">0</span></button>
+      <button class="tab" role="tab" id="t-buy"      data-t="buy"      aria-selected="false">Reorder <span class="pill alert" id="pillBuy">0</span></button>
       <button class="tab" role="tab" id="t-price"    data-t="price"    aria-selected="false">Pricing <span class="pill" id="pillPrice">0</span></button>
       <button class="tab" role="tab" id="t-movers"   data-t="movers"   aria-selected="false">What's Selling</button>
       <button class="tab" role="tab" id="t-dead"     data-t="dead"     aria-selected="false">Dead Stock <span class="pill" id="pillDead">0</span></button>
@@ -296,24 +296,6 @@ footer{text-align:center; font-size:11.5px; color:var(--ink-3); padding:8px 16px
   </div>
 </section>
 
-<!-- ======================================================== REORDER -->
-<section class="panel-body" id="p-reorder" role="tabpanel" aria-labelledby="t-reorder" hidden>
-  <div class="kpis" id="reorderKpis"></div>
-  <div class="card">
-    <h2>What to reorder</h2>
-    <p class="sub">
-      Days of cover = stock ÷ average daily sales over the last 30 days. A line is raised when
-      cover is shorter than the supplier lead time plus a 7-day buffer plus a 7-day warning window.
-      Suggested order quantity covers lead time + 7 days of buffer + the next 30 days.
-    </p>
-    <div class="chips" id="reorderChips"></div>
-    <input type="text" class="search" id="reorderSearch" placeholder="Filter by SKU, part or model…">
-    <div class="tblwrap"><table id="reorderTbl" data-empty="No part is running short on this filter."></table></div>
-    <div class="btnrow" style="margin-top:14px">
-      <button class="btn sec" id="dlReorder">Download purchase list (CSV)</button>
-    </div>
-  </div>
-</section>
 
 <!-- ======================================================== BUYING -->
 <section class="panel-body" id="p-buy" role="tabpanel" aria-labelledby="t-buy" hidden>
@@ -328,19 +310,21 @@ footer{text-align:center; font-size:11.5px; color:var(--ink-3); padding:8px 16px
   <div class="kpis" id="buyKpis"></div>
 
   <div class="card">
-    <h2>Purchase decisions</h2>
+    <h2>What to reorder, and whether to buy it</h2>
     <p class="sub m-hide">
-      One line for every part the Reorder tab says is running short. The quote is compared against
-      what this supplier has charged before, then tested against the margin that survives Amazon's
-      fees. <b>Buy</b> clears the target as things stand. <b>Reprice</b> clears it only if the
-      selling price goes up, and the new price is shown. <b>Hold</b> cannot be rescued inside your
-      price ceiling — so the draft message negotiates instead of ordering.
+      A line is raised when days of cover — stock ÷ average daily sales over the last 30 days — falls
+      below the supplier's lead time plus a 7-day buffer plus a 7-day warning. The suggested quantity
+      covers lead time + 7 days + the next 30. Each line is then tested against the supplier's current
+      quote and the margin that survives Amazon's fees: <b>Buy</b> clears your target as things stand,
+      <b>Reprice</b> clears it only at a higher selling price, and <b>Hold</b> cannot be rescued inside
+      your price ceiling — so its message negotiates instead of ordering.
     </p>
     <div class="chips" id="buyChips"></div>
+    <input type="text" class="search" id="buySearch" placeholder="Filter by SKU, part or model…">
     <div class="tblwrap"><table id="buyTbl" data-empty="Nothing needs buying on this filter."></table></div>
     <div class="hint" id="buyFilterNote"></div>
     <div class="btnrow" style="margin-top:14px">
-      <button class="btn sec" id="dlBuy">Download decisions (CSV)</button>
+      <button class="btn sec" id="dlBuy">Download the purchase list (CSV)</button>
     </div>
   </div>
 
@@ -618,7 +602,7 @@ footer{text-align:center; font-size:11.5px; color:var(--ink-3); padding:8px 16px
 <footer>
   BALAR SPARES inventory tool · figures recomputed in your browser each time the page loads ·
   demonstration dataset, not live Amazon data<br>
-  <span class="build">Build 25 Nov 2026, 22:18 IST · if this date looks old, you are seeing a cached copy —
+  <span class="build">Build 25 Nov 2026, 22:30 IST · if this date looks old, you are seeing a cached copy —
   reload with Ctrl&#8209;Shift&#8209;R (Cmd&#8209;Shift&#8209;R on a Mac)</span>
 </footer>
 </div>
@@ -1678,8 +1662,6 @@ function badge(u){ return u ? `<span class="badge ${URG_CLS[u]}">${u}</span>` : 
 function renderHeader(){
   $("#hdrWindow").textContent = D.dates[0] + " → " + D.dates[D.dates.length-1];
   $("#hdrDays").textContent   = D.dates.length;
-  $("#pillReorder").textContent = S.reorder_count;
-  $("#pillReorder").className = "pill" + (S.critical > 0 ? " alert" : "");
   $("#pillDead").textContent = S.dead_count;
   $("#pillUser").textContent = userRows.length;
 }
@@ -1722,51 +1704,6 @@ function renderOverview(){
     `<b>${deadPct.toFixed(1)}%</b> of the money sitting in stock is in parts that have not sold for 60 days ` +
     `(${inr(S.dead_tied)} of ${inr(S.inventory_at_cost)}). That is cash that could be funding the ` +
     `${S.reorder_count} parts that are about to run out.`;
-}
-
-let reorderTier = "All", reorderQ = "", reorderSort = {k:null, dir:"desc"};
-function reorderRows(){
-  let r = ANALYTICS.reorderList(M);
-  if(reorderTier !== "All") r = r.filter(m => m.urg === reorderTier);
-  if(reorderQ){ const q = reorderQ.toLowerCase();
-    r = r.filter(m => (m.sku+" "+m.name+" "+m.cat).toLowerCase().includes(q)); }
-  if(reorderSort.k) r = [...r].sort(cmp(reorderSort.k, reorderSort.dir));
-  return r;
-}
-const REORDER_COLS = [
-  {h:"SKU", k:"sku", cls:"sku"},
-  {h:"Part", k:"name", cls:"nm"},
-  {h:"Urgency", k:"urg", html:true, f:m=>badge(m.urg)},
-  {h:"Stock", k:"stock", num:true, f:m=>num(m.stock)},
-  {h:"Sales/day", k:"v30", num:true, f:m=>m.v30.toFixed(2)},
-  {h:"Cover", k:"cover", num:true, f:m=>n1(m.cover)+"d"},
-  {h:"Lead", k:"lead", num:true, f:m=>m.lead+"d"},
-  {h:"Reorder pt", k:"rop", num:true, f:m=>Math.round(m.rop)},
-  {h:"Order qty", k:"order", num:true, f:m=>num(m.order)},
-  {h:"Order value", k:"ordv", num:true, f:m=>inr(m.order*m.cost)},
-];
-function renderReorder(){
-  const all = ANALYTICS.reorderList(M);
-  kpi($("#reorderKpis"), [
-    {lab:"Parts to reorder", val:S.reorder_count, note:`${S.critical} critical · ${S.urgent} urgent · ${S.soon} soon`,
-     c:S.critical?"k-crit":"k-ok"},
-    {lab:"Cost of the order", val:inrK(S.order_value), note:"at your cost price, all lines"},
-    {lab:"Most urgent", val: all.length ? all[0].sku : "—",
-     note: all.length ? esc(all[0].name) + " · " + n1(all[0].cover) + "d cover vs " + all[0].lead + "d lead" : "nothing is running short",
-     c:"k-warn"},
-  ]);
-  const chips = $("#reorderChips"); chips.innerHTML = "";
-  ["All","Critical","Urgent","Soon"].forEach(t => {
-    const n = t === "All" ? all.length : all.filter(m => m.urg === t).length;
-    const b = el("button","chip", `${t} <b>${n}</b>`);
-    b.setAttribute("aria-pressed", String(reorderTier === t));
-    b.onclick = () => { reorderTier = t; renderReorder(); };
-    chips.appendChild(b);
-  });
-  const rows = reorderRows();
-  const tv = rows.reduce((s,m)=>s+m.order*m.cost, 0);
-  table($("#reorderTbl"), REORDER_COLS, rows.map(m => ({...m, ordv:m.order*m.cost})),
-    [{v:"Total, lines shown", span:8}, {v:num(rows.reduce((s,m)=>s+m.order,0)), num:true}, {v:inr(tv), num:true}]);
 }
 
 /* ---------------------------------------------------------------- buying */
@@ -1915,6 +1852,7 @@ function saveQuote(sku, sup, price, date, note){
 
 const DEC_CLS = {BUY:"b-ok", REPRICE:"b-warn", HOLD:"b-crit"};
 const DEC_LAB = {BUY:"Buy", REPRICE:"Reprice", HOLD:"Hold"};
+const mOf = o => M.find(x => x.sku === o.sku) || {};
 const pct = v => v === null ? "—" : (v >= 0 ? "+" : "") + v.toFixed(1) + "%";
 const delta = v => v === null ? "—" :
   `<span class="${v > 0 ? "delta-dn" : "delta-up"}">${pct(v)}</span>`;   // a rise in cost is bad
@@ -1922,6 +1860,11 @@ const delta = v => v === null ? "—" :
 const BUY_COLS = [
   {h:"SKU", k:"sku", cls:"sku"},
   {h:"Part", k:"name", cls:"nm"},
+  {h:"Urgency", k:"urg", html:true, f:o=>badge(mOf(o).urg)},
+  {h:"Stock", k:"stock", num:true, cls:"m-hide", f:o=>num(mOf(o).stock)},
+  {h:"Sales/day", k:"v30", num:true, cls:"m-hide", f:o=>mOf(o).v30.toFixed(2)},
+  {h:"Cover", k:"cover", num:true, f:o=>n1(mOf(o).cover)+"d"},
+  {h:"Lead", k:"lead", num:true, cls:"m-hide", f:o=>mOf(o).lead+"d"},
   {h:"Qty", k:"qty", num:true},
   {h:"Quoted", k:"quote", num:true, html:true, f:o=>
     inr(o.quote) + (o.quote_stale
@@ -1956,10 +1899,16 @@ function oneOfEach(){
   });
   return REVIEW.filter(o => pick.includes(o));   // keep the table's own ordering
 }
+let buyQ = "";
 function buyRows(){
-  if(buyFilter === "All")   return REVIEW;
-  if(buyFilter === "ONEOF") return oneOfEach();
-  return REVIEW.filter(o => o.decision === buyFilter);
+  let r = buyFilter === "All" ? REVIEW
+        : buyFilter === "ONEOF" ? oneOfEach()
+        : REVIEW.filter(o => o.decision === buyFilter);
+  const q = buyQ.trim().toLowerCase();
+  if(q) r = r.filter(o => (o.sku + " " + o.name).toLowerCase().includes(q));
+  /* the sortable keys that live on the metrics row rather than the decision */
+  return r.map(o => Object.assign({}, o, {urg:mOf(o).urg, stock:mOf(o).stock,
+    v30:mOf(o).v30, cover:mOf(o).cover, lead:mOf(o).lead}));
 }
 
 function renderBuy(){
@@ -1969,12 +1918,17 @@ function renderBuy(){
   const blocked   = REVIEW.filter(o => o.decision === "HOLD").reduce((s,o) => s + o.order_value, 0);
   const auto      = REVIEW.filter(o => o.route === "AUTO").length;
 
+  const first = ANALYTICS.reorderList(M)[0];
   kpi($("#buyKpis"), [
-    {lab:"Lines reviewed", val:REVIEW.length,
-     note:`${n("BUY")} buy · ${n("REPRICE")} reprice · ${n("HOLD")} hold`,
+    {lab:"Parts to reorder", val:S.reorder_count,
+     note: first ? `${S.critical} critical · ${S.urgent} urgent · ${S.soon} soon — worst is ` +
+                   `${esc(first.sku)}, ${n1(first.cover)}d cover against a ${first.lead}d lead`
+                 : "nothing is running short",
+     c:S.critical ? "k-crit" : "k-ok"},
+    {lab:"Cost of the order", val:inrK(S.order_value), note:"at your cost price, all lines"},
+    {lab:"At the quoted prices", val:inrK(committed),
+     note:`${n("BUY")} buy · ${n("REPRICE")} reprice · ${n("HOLD")} hold · ${auto} would send unasked`,
      c:n("HOLD") ? "k-warn" : "k-ok"},
-    {lab:"Would be committed", val:inrK(committed),
-     note:`${auto} of ${REVIEW.length} lines would send without asking you`},
     {lab:"Held back", val:inrK(blocked),
      note:`${n("HOLD")} ${n("HOLD") === 1 ? "line is" : "lines are"} priced out of your margin`,
      c:blocked ? "k-crit" : "k-ok"},
@@ -2014,8 +1968,8 @@ function renderBuy(){
   });
 
   renderSuppliers(); renderDemoWarn(); renderQuotes();
-  $("#pillBuy").textContent = REVIEW.length;
-  $("#pillBuy").className = "pill" + (n("HOLD") ? " alert" : "");
+  $("#pillBuy").textContent = S.reorder_count;
+  $("#pillBuy").className = "pill" + (S.critical ? " alert" : "");
   renderDetail();
   renderOutbox();
 }
@@ -2239,8 +2193,9 @@ function renderPrice(){
   $("#floorTarget").textContent = policy.t;
   const rows = floorRows();
   table($("#floorTbl"), FLOOR_COLS, rows);
-  $("#pillPrice").textContent = under.length;
-  $("#pillPrice").className = "pill" + (under.length ? " alert" : "");
+  /* the badge carries the alarm, so it counts what is actually losing money */
+  $("#pillPrice").textContent = losing.length;
+  $("#pillPrice").className = "pill" + (losing.length ? " alert" : "");
 
   msg("#floorNote", losing.length ? "warn" : "",
     losing.length
@@ -2379,7 +2334,7 @@ function skuHint(){
 
 function renderAll(){
   recompute(); renderHeader();
-  renderOverview(); renderReorder(); renderBuy(); renderPrice(); renderMovers(); renderDead(); renderUpdate();
+  renderOverview(); renderBuy(); renderPrice(); renderMovers(); renderDead(); renderUpdate();
 }
 
 /* ---------------------------------------------------------------- tabs */
@@ -2391,15 +2346,7 @@ document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
 
 /* ---------------------------------------------------------------- inputs */
 $("#fSku").onchange = skuHint;
-$("#reorderSearch").oninput = e => { reorderQ = e.target.value; renderReorder(); };
 $("#moversSearch").oninput  = e => { moversQ  = e.target.value; renderMovers(); };
-sortable($("#reorderTbl"), REORDER_COLS, reorderRows, (k,dir) => { reorderSort = {k,dir};
-  const rows = reorderRows();
-  table($("#reorderTbl"), REORDER_COLS, rows.map(m=>({...m, ordv:m.order*m.cost})),
-    [{v:"Total, lines shown", span:8}, {v:num(rows.reduce((s,m)=>s+m.order,0)), num:true},
-     {v:inr(rows.reduce((s,m)=>s+m.order*m.cost,0)), num:true}]);
-  const th = $(`#reorderTbl th[data-k="${k}"]`); if(th) th.dataset.dir = dir;
-});
 sortable($("#moversTbl"), MOVERS_COLS, moversRows, (k,dir) => { moversSort = {k,dir}; renderMovers(); });
 
 ["#pTarget","#pRise","#pAuto"].forEach(id => $(id).oninput = readPolicy);
@@ -2537,21 +2484,26 @@ $("#bdCopy").onclick = () => {
   else done(false);
 };
 $("#dlBuy").onclick = () => {
-  const head = ["sku","part","supplier","qty","quoted_inr","last_paid_inr","median_paid_inr",
-                "vs_last_pct","vs_median_pct","order_value_inr","sells_at_inr","amazon_fees_inr",
+  const head = ["sku","part","category","urgency","stock","sales_per_day","days_cover","lead_days",
+                "reorder_point","order_qty","unit_cost_inr","order_value_at_cost_inr",
+                "supplier","quoted_inr","last_paid_inr","median_paid_inr","vs_last_pct",
+                "vs_median_pct","order_value_at_quote_inr","sells_at_inr","amazon_fees_inr",
                 "net_per_unit_inr","margin_pct","target_pct","price_needed_inr","price_rise_pct",
                 "max_payable_inr","decision","sending","reason"];
   const rows = buyRows().map(o => {
-    const sup = PROCDATA.suppliers.find(s => s.id === o.supplier_id);
-    const r2 = v => v === null ? "" : Number(v).toFixed(2);
-    return [o.sku, o.name, sup.name, o.qty, o.quote, o.last_paid, o.median_paid,
-            r2(o.vs_last_pct), r2(o.vs_median_pct), o.order_value, o.price, r2(o.fees.total),
-            r2(o.net_unit), r2(o.margin_pct), o.target_pct, o.required_price ?? "",
-            r2(o.price_rise_pct), r2(o.max_payable), o.decision,
-            o.route === "AUTO" ? "automatic" : "needs approval", o.why];
+    const m = mOf(o), sup = PROCDATA.suppliers.find(s => s.id === o.supplier_id);
+    const r2 = v => v === null || v === undefined ? "" : Number(v).toFixed(2);
+    return [o.sku, o.name, o.cat, m.urg, m.stock, m.v30.toFixed(3),
+            m.cover === null ? "" : m.cover.toFixed(1), m.lead, Math.round(m.rop), o.qty,
+            m.cost, m.order * m.cost,
+            sup.name, o.quote, o.last_paid, o.median_paid, r2(o.vs_last_pct), r2(o.vs_median_pct),
+            o.order_value, o.price, r2(o.fees.total), r2(o.net_unit), r2(o.margin_pct),
+            o.target_pct, o.required_price ?? "", r2(o.price_rise_pct), r2(o.max_payable),
+            o.decision, o.route === "AUTO" ? "automatic" : "needs approval", o.why];
   });
-  download("balar_purchase_decisions.csv", csv([head, ...rows]));
+  download("balar_purchase_list.csv", csv([head, ...rows]));
 };
+$("#buySearch").oninput = e => { buyQ = e.target.value; renderBuy(); };
 
 function msg(host, cls, html){ const n = $(host); n.hidden = false; n.className = "note " + cls; n.innerHTML = html; }
 
@@ -2645,10 +2597,6 @@ $("#resetUser").onclick = () => {
 
 $("#dlUser").onclick = () => download("balar_my_entries.csv",
   csv([["date","sku","units_sold","closing_stock"], ...userRows.map(r => [r.date, r.sku, r.units, r.stock])]));
-$("#dlReorder").onclick = () => download("balar_purchase_list.csv",
-  csv([["sku","part","category","urgency","stock","sales_per_day","days_cover","lead_days","reorder_point","order_qty","unit_cost_inr","order_value_inr"],
-       ...reorderRows().map(m => [m.sku, m.name, m.cat, m.urg, m.stock, m.v30.toFixed(3),
-            m.cover===null?"":m.cover.toFixed(1), m.lead, Math.round(m.rop), m.order, m.cost, m.order*m.cost])]));
 $("#dlDead").onclick = () => download("balar_dead_stock.csv",
   csv([["sku","part","category","stock","days_since_last_sale","unit_cost_inr","capital_tied_inr"],
        ...ANALYTICS.deadList(M).map(m => [m.sku, m.name, m.cat, m.stock, m.days_since, m.cost, m.tied])]));
