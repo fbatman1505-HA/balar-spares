@@ -195,8 +195,21 @@ tr.sel td{background:var(--cyan-xl)}
 .grid9 .cell{border-radius:9px; padding:11px 6px; text-align:center; border:1px solid var(--line)}
 .grid9 .cell b{display:block; font-size:19px; font-variant-numeric:tabular-nums; line-height:1.2}
 .grid9 .cell span{display:block; font-size:10.5px; color:var(--ink-3); margin-top:2px}
-.curve{position:relative; height:190px; margin:6px 0 2px}
-.curve svg{display:block; width:100%; height:100%; overflow:visible}
+.sbar{display:flex; height:34px; border-radius:9px; overflow:hidden; margin:4px 0 5px}
+.sbar div{display:flex; align-items:center; justify-content:center; font-size:12px;
+  font-weight:700; color:#fff; min-width:0; white-space:nowrap}
+.sbar .sA{background:var(--cyan)} .sbar .sB{background:#67B9D9} .sbar .sC{background:#BFD6E0}
+.barlab{font-size:12px; color:var(--ink-3); margin-bottom:2px; font-weight:600}
+.act{display:flex; gap:14px; padding:14px 0; border-bottom:1px solid var(--line); align-items:flex-start}
+.act:last-child{border-bottom:none}
+.act .n{flex:0 0 auto; min-width:92px; font-size:20px; font-weight:700; line-height:1.15;
+  font-variant-numeric:tabular-nums}
+.act .n span{display:block; font-size:11.5px; font-weight:600; color:var(--ink-3);
+  text-transform:uppercase; letter-spacing:.4px; margin-top:2px}
+.act .t{min-width:0}
+.act .t b{display:block; font-size:14.5px; margin-bottom:2px}
+.act .t p{margin:0; font-size:13px; color:var(--ink-2); line-height:1.5}
+.act.good .n{color:var(--ok)} .act.warn .n{color:var(--warn)} .act.bad .n{color:var(--mag)}
 
 /* ---- phones: a wide table cannot be scrolled sideways and still be read, so
    every row becomes a small stack with its column name beside each value ---- */
@@ -509,62 +522,38 @@ footer{text-align:center; font-size:11.5px; color:var(--ink-3); padding:8px 16px
 <!-- ======================================================== ABC -->
 <section class="panel-body" id="p-abc" role="tabpanel" aria-labelledby="t-abc" hidden>
 
-  <div class="note" style="margin:0 0 16px">
-    Parts ranked by <b>consumption value</b> — units moved times what you pay, not what it earns.
-    That is the measure that decides where purchasing effort is worth spending. <b>A</b> is the
-    cheapest 80% of your spend to watch closely, <b>B</b> the next 15%, <b>C</b> the long tail.
-  </div>
-
-  <div class="kpis" id="abcKpis"></div>
+  <div class="note" style="margin:0 0 16px" id="abcLede"></div>
 
   <div class="card">
-    <h2>The curve</h2>
-    <p class="sub">Share of total spend as parts are added, richest first. The steeper the start,
-      the more a small number of parts decides your purchasing.</p>
-    <div id="abcCurve"></div>
+    <h2>Where your money goes</h2>
+    <p class="sub">Parts sorted by how much you spend buying them over the period.</p>
+    <div id="abcBars"></div>
   </div>
 
   <div class="card">
-    <h2>What each class is doing</h2>
-    <p class="sub m-hide">
-      The classification is only worth having if it tells you something the part-by-part view does
-      not. This is where it does.
-    </p>
-    <div class="tblwrap"><table id="abcSumTbl"></table></div>
-    <div class="note" id="abcInsight"></div>
+    <h2>What to do about it</h2>
+    <p class="sub">Each of these is a list you can act on, not a score.</p>
+    <div id="abcActions"></div>
   </div>
 
   <div class="card">
-    <h2>Steadiness against value</h2>
-    <p class="sub m-hide">
-      ABC says how much a part costs you. XYZ says how predictable it is — <b>X</b> steady,
-      <b>Y</b> variable, <b>Z</b> erratic, measured as the variation in weekly sales. Together they
-      say how to control it: <b>AX</b> is worth forecasting and watching, <b>CZ</b> is worth a rule
-      and no attention.
-    </p>
-    <div id="abcGrid"></div>
-    <div class="hint" id="abcGridNote"></div>
-  </div>
-
-  <div class="card">
-    <h2>Control policy</h2>
+    <h2>Treat the three groups differently</h2>
     <p class="sub">
-      The point of classifying at all. An A part is reviewed more often and carries more buffer than
-      a C part. Turn this on and the Reorder tab recalculates — same rules, different numbers per
-      class. <b>Off by default</b>, because it changes what you are told to order.
+      Right now every part gets the same treatment — <b id="abcUniform"></b>. That is the thing this
+      grouping exists to fix: it is not worth checking a ₹300 part as carefully as a ₹30,000 one.
     </p>
-    <label class="tog"><input type="checkbox" id="abcOn"> <span>Apply class-specific control</span></label>
+    <label class="tog"><input type="checkbox" id="abcOn"> <span>Check the big ones more often, the small ones less</span></label>
     <div class="tblwrap" style="margin-top:12px"><table id="abcPolTbl"></table></div>
     <div class="note" id="abcPolNote"></div>
   </div>
 
   <div class="card">
-    <h2>Every part, classified</h2>
+    <h2>Every part</h2>
     <div class="chips" id="abcChips"></div>
     <input type="text" class="search" id="abcSearch" placeholder="Filter by SKU, part or model…">
     <div class="tblwrap"><table id="abcTbl" data-empty="Nothing on this filter."></table></div>
     <div class="btnrow" style="margin-top:14px">
-      <button class="btn sec" id="dlAbc">Download the classification (CSV)</button>
+      <button class="btn sec" id="dlAbc">Download the list (CSV)</button>
     </div>
   </div>
 </section>
@@ -670,7 +659,7 @@ footer{text-align:center; font-size:11.5px; color:var(--ink-3); padding:8px 16px
 <footer>
   BALAR SPARES inventory tool · figures recomputed in your browser each time the page loads ·
   demonstration dataset, not live Amazon data<br>
-  <span class="build">Build 26 Nov 2026, 09:04 IST · if this date looks old, you are seeing a cached copy —
+  <span class="build">Build 26 Nov 2026, 09:10 IST · if this date looks old, you are seeing a cached copy —
   reload with Ctrl&#8209;Shift&#8209;R (Cmd&#8209;Shift&#8209;R on a Mac)</span>
 </footer>
 </div>
@@ -2417,133 +2406,125 @@ function renderPrice(){
 }
 
 /* ---------------------------------------------------------------- abc */
+/* Parts grouped by how much of the purchasing budget each one accounts for.
+   The textbook calls this ABC; the page says it in words, because the grouping
+   is only worth anything if it ends in a list you can act on. */
 const CLS = c => `<span class="cls cls-${c}">${c}</span>`;
-const XYZ_LABEL = {X:"steady", Y:"variable", Z:"erratic"};
+const STEADY = {X:"steady", Y:"up and down", Z:"unpredictable"};
+const GROUP = {A:"the big ones", B:"the middle", C:"the small ones"};
 
 const ABC_COLS = [
-  {h:"#", k:"abc_rank", num:true},
   {h:"SKU", k:"sku", cls:"sku"},
   {h:"Part", k:"name", cls:"nm"},
-  {h:"Class", k:"abc", html:true, f:m=>CLS(m.abc)},
+  {h:"Group", k:"abc", html:true, f:m=>CLS(m.abc)},
   {h:"Units moved", k:"units_all", num:true, cls:"m-hide", f:m=>num(m.units_all)},
-  {h:"You pay", k:"cost", num:true, cls:"m-hide", f:m=>inr(m.cost)},
-  {h:"Spend on it", k:"cons_value", num:true, f:m=>inr(m.cons_value)},
-  {h:"Running %", k:"cum_pct", num:true, cls:"m-hide", f:m=>m.cum_pct.toFixed(1)+"%"},
-  {h:"Demand", k:"xyz", html:true, f:m=>`${m.xyz} <span class="mute">${XYZ_LABEL[m.xyz]}</span>`},
-  {h:"Variation", k:"cv", num:true, cls:"m-hide", f:m=>m.cv === null ? "—" : m.cv.toFixed(2)},
+  {h:"Spent on it", k:"cons_value", num:true, f:m=>inr(m.cons_value)},
+  {h:"Share of spend", k:"share", num:true, cls:"m-hide",
+   f:m=>(m.cons_value / ABC_TOTAL * 100).toFixed(1)+"%"},
+  {h:"Stock now", k:"stock", num:true, cls:"m-hide", f:m=>num(m.stock)},
+  {h:"Cash on the shelf", k:"tied", num:true, f:m=>inr(m.tied)},
+  {h:"Selling", k:"xyz", f:m=>STEADY[m.xyz]},
+  {h:"", k:"st", sort:false, html:true, f:m=> m.dead ? `<span class="badge b-crit">Stopped</span>`
+    : m.urg ? `<span class="badge b-warn">${m.urg}</span>` : ""},
 ];
+let ABC_TOTAL = 1;
 
 function abcRows(){
   let r = abcFilter === "All" ? M.slice()
         : ["A","B","C"].includes(abcFilter) ? M.filter(m => m.abc === abcFilter)
+        : abcFilter === "Stopped" ? M.filter(m => m.dead)
         : M.filter(m => m.xyz === abcFilter);
   const q = abcQ.trim().toLowerCase();
   if(q) r = r.filter(m => (m.sku + " " + m.name).toLowerCase().includes(q));
-  return r.sort((a,b) => a.abc_rank - b.abc_rank);
+  return r.sort((x,y) => x.abc_rank - y.abc_rank);
 }
-
-/* The Pareto curve, drawn as a plain SVG path: one point per part, cumulative
-   share of spend up the side. */
-function abcCurve(host){
-  const rows = M.slice().sort((a,b) => a.abc_rank - b.abc_rank);
-  const W = 100, H = 100, pts = rows.map((m,i) => [ (i+1)/rows.length*W, H - m.cum_pct/100*H ]);
-  const path = "M0," + H + " L" + pts.map(p => `${p[0].toFixed(2)},${p[1].toFixed(2)}`).join(" L");
-  const aEnd = rows.filter(m => m.abc === "A").length / rows.length * W;
-  const bEnd = rows.filter(m => m.abc !== "C").length / rows.length * W;
-  host.innerHTML = `<div class="curve"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"
-      role="img" aria-label="Cumulative share of spend against parts, richest first">
-    <rect x="0" y="0" width="${aEnd}" height="${H}" fill="var(--cyan-xl)"></rect>
-    <rect x="${aEnd}" y="0" width="${bEnd-aEnd}" height="${H}" fill="var(--cyan-xl)" opacity=".45"></rect>
-    ${[25,50,75].map(y => `<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="var(--line)"
-        stroke-width=".4" vector-effect="non-scaling-stroke"></line>`).join("")}
-    <path d="${path}" fill="none" stroke="var(--cyan)" stroke-width="2"
-      vector-effect="non-scaling-stroke" stroke-linejoin="round"></path>
-  </svg></div>
-  <div style="display:flex; justify-content:space-between; font-size:11.5px; color:var(--ink-3)">
-    <span>richest part</span><span>${M.length} parts</span></div>`;
-}
-
-const ABCSUM_COLS = [
-  {h:"Class", k:"cls", html:true, f:r=>CLS(r.cls)},
-  {h:"Parts", k:"parts", num:true, f:r=>`${r.parts} (${r.pct_parts.toFixed(0)}%)`},
-  {h:"Spend", k:"value", num:true, f:r=>inrK(r.value)},
-  {h:"Share of spend", k:"pct_value", num:true, f:r=>r.pct_value.toFixed(1)+"%"},
-  {h:"Stock held", k:"tied", num:true, cls:"m-hide", f:r=>inrK(r.tied)},
-  {h:"Running short", k:"short", num:true},
-  {h:"Stopped selling", k:"dead", num:true, html:true,
-   f:r=>r.dead ? `<span class="delta-dn">${r.dead}</span>` : "0"},
-  {h:"Steady demand", k:"steady", num:true, cls:"m-hide", f:r=>`${r.steady} of ${r.parts}`},
-];
 
 function renderAbc(){
   const sum = ANALYTICS.abcSummary(M);
-  const a = sum[0], c = sum[2];
-  kpi($("#abcKpis"), [
-    {lab:"A — watch these", val:`${a.parts} parts`,
-     note:`${a.pct_value.toFixed(0)}% of everything you spend, ${inrK(a.value)}`, c:"k-ok"},
-    {lab:"B — the middle", val:`${sum[1].parts} parts`,
-     note:`${sum[1].pct_value.toFixed(0)}% of spend`},
-    {lab:"C — the long tail", val:`${c.parts} parts`,
-     note:`${c.pct_value.toFixed(1)}% of spend, and ${c.dead} of them have stopped selling`,
-     c:c.dead ? "k-warn" : "k-ok"},
-  ]);
+  const [a, b, c] = sum;
+  ABC_TOTAL = M.reduce((s,m) => s + m.cons_value, 0) || 1;
 
-  abcCurve($("#abcCurve"));
-  table($("#abcSumTbl"), ABCSUM_COLS, sum);
+  $("#abcLede").innerHTML =
+    `Your ${M.length} parts are not equal. <b>${a.parts} of them account for ` +
+    `${a.pct_value.toFixed(0)}% of everything you spend on stock</b>, and ${c.parts} account for ` +
+    `${c.pct_value.toFixed(0)}%. Worth knowing which is which before you decide where to put your ` +
+    `attention and your cash.`;
 
-  /* The cross-tab is the finding; say it rather than leaving it to be noticed. */
-  const deadC = c.dead, deadAll = M.filter(m => m.dead).length;
-  const shortA = a.short + sum[1].short;
-  msg("#abcInsight", deadC > deadAll / 2 ? "warn" : "",
-    `<b>${deadC} of your ${deadAll} dead parts are class C</b>, and ${shortA} of the ` +
-    `${shortA + c.short} parts running short are A or B. So your reordering attention is already ` +
-    `in the right place, and your dead money is almost entirely in the tail. The answer for a C ` +
-    `part is rarely to manage it harder — it is to buy it less often, in bulk, or stop stocking it.`);
+  const bar = (label, vals, fmt) =>
+    `<div class="barlab">${label}</div><div class="sbar">` +
+    ["A","B","C"].map((k,i) => {
+      const pct = vals[i];
+      return `<div class="s${k}" style="width:${pct}%" title="${GROUP[k]}: ${fmt(i)}">` +
+             `${pct > 9 ? fmt(i) : ""}</div>`;
+    }).join("") + `</div>`;
+  $("#abcBars").innerHTML =
+    bar("Share of what you spend", sum.map(r=>r.pct_value), i=>sum[i].pct_value.toFixed(0)+"%") +
+    bar("Share of the catalogue",  sum.map(r=>r.pct_parts), i=>sum[i].parts+" parts") +
+    `<p class="sub" style="margin:10px 0 0">` +
+    [["A",a],["B",b],["C",c]].map(([k,r]) =>
+      `${CLS(k)} <b>${GROUP[k]}</b> — ${r.parts} parts, ${inrK(r.value)} spent, ` +
+      `${inrK(r.tied)} sitting as stock`).join("<br>") + `</p>`;
 
-  const cells = {};
-  M.forEach(m => { const k = m.abc + m.xyz; cells[k] = (cells[k] || 0) + 1; });
-  const tone = (a2, z) => a2 === "A" && z === "X" ? "background:var(--cyan-xl)"
-              : a2 === "C" && z === "Z" ? "background:var(--panel)" : "";
-  $("#abcGrid").innerHTML =
-    `<div class="grid9"><div></div>` +
-    ["X","Y","Z"].map(z => `<div class="hd">${z} · ${XYZ_LABEL[z]}</div>`).join("") +
-    ["A","B","C"].map(cl => `<div class="rh">${CLS(cl)}</div>` +
-      ["X","Y","Z"].map(z => `<div class="cell" style="${tone(cl,z)}"><b>${cells[cl+z] || 0}</b>` +
-        `<span>${cl}${z}</span></div>`).join("")).join("") + `</div>`;
-  $("#abcGridNote").innerHTML =
-    `<b>${cells.AX || 0} parts are AX</b> — expensive and predictable, where forecasting and tight ` +
-    `review pay for themselves. <b>${cells.CZ || 0} are CZ</b> — cheap and erratic, where holding ` +
-    `stock at all is the thing worth questioning.`;
+  /* ---- the lists worth acting on ---- */
+  const net = m => { const q = PROCDATA.quotes[m.sku], cost = q ? q[1] : m.cost;
+    return m.price - cost - PROC.fees(m.price, m.cat, PROCDATA.fees).total; };
+  const stop  = M.filter(m => m.abc === "C" && m.dead);
+  const watch = M.filter(m => m.abc === "A" && m.urg);
+  const bulk  = M.filter(m => m.abc === "A" && m.xyz === "X" && !m.urg);
+  const over  = M.filter(m => m.abc === "C" && !m.dead && m.cover !== null && m.cover > 90);
+  const bleed = M.filter(m => m.abc === "C" && m.u30 > 0 && net(m) < 0);
+  const worst = watch.slice().sort((x,y) => (x.cover - x.lead) - (y.cover - y.lead))[0];
 
+  const act = (tone, n, unit, title, body) => !n ? "" :
+    `<div class="act ${tone}"><div class="n">${n}<span>${unit}</span></div>` +
+    `<div class="t"><b>${title}</b><p>${body}</p></div></div>`;
+
+  $("#abcActions").innerHTML = [
+    act("warn", watch.length, "to watch", "These can actually hurt you",
+      `Big spenders that are running short. ${inr(watch.reduce((s,m)=>s+m.order*m.cost,0))} to ` +
+      `restock.` + (worst ? ` Worst is <b>${esc(worst.name)}</b> — ${Math.round(worst.cover)} days ` +
+      `of cover against a ${worst.lead}-day wait.` : "")),
+    act("bad", stop.length, "to drop",
+      "Small parts you have stopped selling",
+      `Nothing sold in 60 days and they are not worth the shelf. Clearing them frees ` +
+      `<b>${inr(stop.reduce((s,m)=>s+m.tied,0))}</b>.`),
+    act("warn", over.length, "overbought", "Small parts you bought too many of",
+      `Still selling, but you hold more than three months of them. ` +
+      `${inr(over.reduce((s,m)=>s+m.tied,0))} tied up in parts that barely matter.`),
+    act("bad", bleed.length, "losing", "Small parts that lose money per sale",
+      `They sell, but after Amazon's cut each sale costs you money. Raise the price or stop ` +
+      `listing them.`),
+    act("good", bulk.length, "safe to bulk", "Big parts that sell steadily",
+      `Predictable week to week, so you can order further ahead and negotiate on volume without ` +
+      `much risk of being stuck with them.`),
+  ].join("") || `<div class="empty">Nothing needs attention on this data.</div>`;
+
+  /* ---- control policy ---- */
+  $("#abcUniform").textContent =
+    `${ANALYTICS.SAFETY} days of spare stock, and each order covering ${ANALYTICS.REVIEW} days`;
   renderAbcPolicy();
 
   const chips = $("#abcChips"); chips.innerHTML = "";
-  [["All","Every part",M.length],["A","Class A",a.parts],["B","Class B",sum[1].parts],
-   ["C","Class C",c.parts],["X","Steady",M.filter(m=>m.xyz==="X").length],
-   ["Z","Erratic",M.filter(m=>m.xyz==="Z").length]].forEach(([k,lab,n]) => {
-     const b = el("button","chip",`${lab} <b>${n}</b>`);
-     b.setAttribute("aria-pressed", String(abcFilter === k));
-     b.onclick = () => { abcFilter = k; renderAbc(); };
-     chips.appendChild(b);
+  [["All","Every part",M.length],["A","The big ones",a.parts],["B","The middle",b.parts],
+   ["C","The small ones",c.parts],["Stopped","Stopped selling",M.filter(m=>m.dead).length]]
+   .forEach(([k,lab,n]) => {
+     const btn = el("button","chip",`${lab} <b>${n}</b>`);
+     btn.setAttribute("aria-pressed", String(abcFilter === k));
+     btn.onclick = () => { abcFilter = k; renderAbc(); };
+     chips.appendChild(btn);
    });
   table($("#abcTbl"), ABC_COLS, abcRows());
 }
 
-/* Built per render: when the policy is off the two left columns describe what
-   would apply, not what produced the quantities beside them. */
 const abcPolCols = () => [
-  {h:"Class", k:"cls", html:true, f:r=>CLS(r.cls)},
-  {h:abcPolicyOn ? "Buffer beyond lead time" : "Buffer, if switched on",
-   k:"safety", num:true, html:true,
-   f:r=>abcPolicyOn ? r.safety + " days"
-      : `<span class="mute">${r.safety} days</span>`},
-  {h:abcPolicyOn ? "Each order covers" : "Order cover, if switched on",
-   k:"review", num:true, html:true,
-   f:r=>abcPolicyOn ? r.review + " days"
-      : `<span class="mute">${r.review} days</span>`},
-  {h:"Parts short", k:"short", num:true},
+  {h:"Group", k:"cls", html:true, f:r=>`${CLS(r.cls)} <span class="mute">${GROUP[r.cls]}</span>`},
+  {h:"Spare stock kept", k:"safety", num:true, html:true,
+   f:r=>abcPolicyOn ? r.safety+" days" : `<span class="mute">${r.safety} days</span>`},
+  {h:"Each order lasts", k:"review", num:true, html:true,
+   f:r=>abcPolicyOn ? r.review+" days" : `<span class="mute">${r.review} days</span>`},
+  {h:"Short now", k:"short", num:true},
   {h:"To order", k:"qty", num:true, cls:"m-hide", f:r=>num(r.qty)},
-  {h:"At your cost", k:"value", num:true, f:r=>inrK(r.value)},
+  {h:"Cost", k:"value", num:true, f:r=>inrK(r.value)},
 ];
 
 function renderAbcPolicy(){
@@ -2553,19 +2534,19 @@ function renderAbcPolicy(){
     return {cls:cl, safety:P[cl].safety, review:P[cl].review, short:g.length,
             qty:g.reduce((s,m)=>s+m.order,0), value:g.reduce((s,m)=>s+m.order*m.cost,0)};
   });
+  const tot = rows.reduce((s,r)=>s+r.value,0);
   table($("#abcPolTbl"), abcPolCols(), rows,
     [{v:"Total", span:3}, {v:rows.reduce((s,r)=>s+r.short,0), num:true},
-     {v:num(rows.reduce((s,r)=>s+r.qty,0)), num:true},
-     {v:inrK(rows.reduce((s,r)=>s+r.value,0)), num:true}]);
+     {v:num(rows.reduce((s,r)=>s+r.qty,0)), num:true}, {v:inrK(tot), num:true}]);
   $("#abcOn").checked = abcPolicyOn;
   msg("#abcPolNote", abcPolicyOn ? "good" : "",
     abcPolicyOn
-      ? `<b>On.</b> A parts are reviewed every ${P.A.review} days instead of ${ANALYTICS.REVIEW}, ` +
-        `so you order less at a time and more often. The Reorder tab is using these figures.`
-      : `<b>Off.</b> Every part is treated the same — ${ANALYTICS.SAFETY} days of buffer, each order ` +
-        `covering ${ANALYTICS.REVIEW} days — which is what a tool without ABC does, and what the ` +
-        `report describes. The quantities above are from that uniform rule; the greyed columns are ` +
-        `what each class would get instead. Turn it on to see the difference.`);
+      ? `<b>On.</b> The big ones are checked every ${P.A.review} days instead of ` +
+        `${ANALYTICS.REVIEW}, so you buy smaller amounts more often and less cash sits in stock. ` +
+        `This week that is <b>${inrK(tot)}</b> to order.`
+      : `<b>Off.</b> Every part treated the same, which is what the figures above and in the ` +
+        `Reorder tab currently use. The greyed numbers are what each group would get instead. ` +
+        `Turn it on and the order changes.`);
 }
 
 let topMode = "units";
