@@ -13,6 +13,7 @@ slower than last month, and which stock has stopped moving.
 | Overview | How is the business doing, and where is the money stuck? |
 | Reorder | What is running short, what it costs, whether the quote is worth accepting, and what goes to the supplier |
 | Pricing | The lowest price each part can be sold at, and whether a rival's price can be matched |
+| ABC | Parts classified by consumption value, crossed with demand steadiness, and the control policy that follows |
 | What's Selling | What is moving, accelerating, or fading? |
 | Update Data | Add today's figures, by form or by CSV. |
 | Ask | Any of the above in plain English, plus dead stock, stockouts and overstock, which have no tab of their own |
@@ -64,6 +65,21 @@ The quotes shipped in `balar_quotes.csv` are generated, like the rest of the dat
 the last invented purchase price multiplied by a random factor. Six parts had that factor set
 deliberately so the demonstration exercises all three decision branches. Nothing here was
 discovered in the data; the data was built to exercise the logic.
+
+## ABC
+
+Parts are ranked by **consumption value** — units moved times what you pay, not what the part
+earns. That is Dickie's original measure and the one that decides where purchasing effort is worth
+spending. A is the parts making up the first 80% of spend, B the next 15%, C the tail.
+
+Crossed with **XYZ** — how steady weekly demand is, by coefficient of variation — that gives nine
+cells and nine sensible policies. AX is worth forecasting; CZ is worth a rule and no attention.
+
+The classification is only useful if it changes something, so a switch applies **class-specific
+control**: A parts carry more buffer and are reviewed more often than C parts. It is off by
+default, because it changes the reorder list. On this dataset, turning it on leaves the same seven
+parts short but drops the order from Rs 3,72,955 to Rs 2,59,510 — the expensive items reviewed
+fortnightly rather than monthly, so less cash is committed per cycle.
 
 ## How it works
 
